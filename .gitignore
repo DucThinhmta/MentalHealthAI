@@ -1,0 +1,21 @@
+# môi trường & cache
+venv/
+.venv/
+__pycache__/
+*.pyc
+.vs/
+.pytest_cache/
+tmp_trainer/
+
+# mô hình (đưa lên Hugging Face, không đưa lên GitHub) - chỉ giữ file ngưỡng cảm xúc
+models/*
+!models/emotion_thresholds.json
+
+# dữ liệu (có điều khoản riêng) - chỉ giữ data/README.md
+data/*
+!data/README.md
+
+# bí mật & nhật ký hội thoại
+.env
+*.env
+analysis_log*.json
