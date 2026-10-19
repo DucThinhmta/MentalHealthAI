@@ -1,4 +1,4 @@
-# MentalHealthAI — chạy nhanh
+# MentalHealthAI 
 
 > Công cụ nghiên cứu phân tích hội thoại (stress / cảm xúc / mức độ biểu hiện trầm cảm). **Không phải chẩn đoán y khoa.**
 > Mô hình chỉ hiểu **tiếng Anh**.
