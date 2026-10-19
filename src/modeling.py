@@ -12,12 +12,18 @@ def get_device() -> torch.device:
 
 
 def load(path):
-    """Nạp (tokenizer, model). Nếu checkpoint không có tokenizer thì dùng bert-base-uncased."""
+    """Nạp (tokenizer, model).
+
+    Cả ba mô hình đều tinh chỉnh từ bert-base-uncased nên luôn dùng tokenizer gốc này.
+    Tokenizer lưu trong checkpoint Emotion tách từ sai, làm mô hình cho cùng một đầu ra
+    với mọi câu (micro F1 0,30 so với 0,58). Chỉ khi không nạp được tokenizer gốc
+    (máy offline, chưa tải) mới dùng tokenizer trong checkpoint.
+    """
     path = str(path)
     try:
-        tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True)
-    except Exception:
         tokenizer = AutoTokenizer.from_pretrained(config.BASE_MODEL)
+    except Exception:
+        tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True)
     model = AutoModelForSequenceClassification.from_pretrained(path, local_files_only=True)
     return tokenizer, model.to(get_device()).eval()
 
