@@ -82,12 +82,7 @@ pytest tests -q                                # kiểm thử logic (không cầ
 Muốn dùng LLM: `pip install anthropic`, đặt `ANTHROPIC_API_KEY` (và tùy chọn `ANTHROPIC_MODEL`).
 Không có khóa thì ứng dụng vẫn chạy bằng phản hồi theo luật.
 
-`config.find_model` ưu tiên `bert_*_v2` (do script train mới tạo), sau đó là mô hình cũ
-(`bert_stress_final`, `bert_emotion/checkpoint-5427`, `bert_depression_final`) ở thư mục trong hoặc ngoài.
 
 ## Lưu ý 
 - Mô hình chỉ hiểu **tiếng Anh**; tiếng Việt cần bật dịch (cần API) — nêu rõ trong hạn chế.
 - Nhãn Depression là nhãn bài đăng Reddit, không phải đánh giá lâm sàng.
-- Báo cáo **macro-F1 + per-class**, không chỉ accuracy (Depression lệch 73% `minimum`).
-- Chỉ chọn epoch/ngưỡng trên **dev**; test chỉ chạm một lần.
-- Kiểm tra lại `SUPPORT_RESOURCES` trong `config.py` trước khi demo.
