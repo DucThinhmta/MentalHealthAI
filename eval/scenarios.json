@@ -1,0 +1,221 @@
+{
+ "description": "Bộ kịch bản hội thoại tự xây dựng để kiểm tra phép gộp nhiều tin nhắn. Nhãn 'expect' là trạng thái stress ở tin nhắn CUỐI, do người soạn gán, không phải nhãn từ bộ dữ liệu chuẩn.",
+ "scenarios": [
+  {
+   "id": "neg_to_pos_01",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I have three exams this week and I cannot sleep because I am so anxious about failing.",
+    "Actually I just talked to my teacher and she said I am well prepared, so I feel calm and relieved now."
+   ]
+  },
+  {
+   "id": "neg_to_pos_02",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "My boss yelled at me again today and I feel completely overwhelmed and exhausted at work.",
+    "But then my team brought me coffee and we laughed together, and now I feel much better and happy."
+   ]
+  },
+  {
+   "id": "neg_to_pos_03",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I have been crying all evening because I feel like nothing is going right in my life.",
+    "Then my best friend came over and we watched a movie, and I feel safe and a lot lighter now."
+   ]
+  },
+  {
+   "id": "neg_to_pos_04",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I am panicking about rent, I do not know how I will pay it this month and my chest feels tight.",
+    "Good news, my mom just sent me the money, so the problem is solved and I can finally breathe."
+   ]
+  },
+  {
+   "id": "neg_to_pos_05",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I failed my driving test today and I feel so ashamed and angry at myself.",
+    "I booked a new test for next week and I feel hopeful and motivated to try again."
+   ]
+  },
+  {
+   "id": "neg_to_pos_06",
+   "category": "neg_to_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I am terrified about the presentation tomorrow and my hands will not stop shaking.",
+    "I practiced it twice with my friends and they loved it, so I feel confident and excited now."
+   ]
+  },
+  {
+   "id": "pos_to_neg_01",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "I had a lovely walk in the park this morning and I feel relaxed and happy.",
+    "Just got a call from the hospital, my father is in the emergency room and I am shaking with fear and cannot think straight."
+   ]
+  },
+  {
+   "id": "pos_to_neg_02",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "Today was a good day, I finished my project and went out for dinner with friends.",
+    "I just found out I am being laid off tomorrow and I feel sick with worry about how I will survive."
+   ]
+  },
+  {
+   "id": "pos_to_neg_03",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "I am enjoying my holiday and everything is peaceful and calm.",
+    "My landlord just told me I have a week to leave the flat and I am panicking, I have nowhere to go."
+   ]
+  },
+  {
+   "id": "pos_to_neg_04",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "I feel great, I passed my exam and I am celebrating with my family.",
+    "Now my girlfriend says she wants to break up and I feel devastated, I cannot stop crying."
+   ]
+  },
+  {
+   "id": "pos_to_neg_05",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "Things are going well at work lately and I am in a good mood.",
+    "My manager just called a meeting about my performance and I am so scared I might lose everything I worked for."
+   ]
+  },
+  {
+   "id": "pos_to_neg_06",
+   "category": "pos_to_neg",
+   "expect": "stress",
+   "messages": [
+    "I slept well and woke up feeling rested and ready for the day.",
+    "I received a threatening message and I feel unsafe, anxious and I cannot concentrate on anything at all."
+   ]
+  },
+  {
+   "id": "neg_neg_01",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "I cannot sleep anymore and I am constantly worried about money and my future.",
+    "The worry keeps getting worse, I feel exhausted, overwhelmed and I do not know how to cope with all this pressure."
+   ]
+  },
+  {
+   "id": "neg_neg_02",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "My workload is crushing me and I feel like I am drowning every single day.",
+    "I snapped at my coworker today and now I feel guilty and even more stressed, I am at my breaking point."
+   ]
+  },
+  {
+   "id": "neg_neg_03",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "I am so anxious about the exams that my stomach hurts all the time.",
+    "I studied all night and still feel unprepared, my heart races and I feel like I am going to fail everything."
+   ]
+  },
+  {
+   "id": "neg_neg_04",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "Ever since the argument with my parents I feel tense and cannot relax at all.",
+    "They are still not speaking to me and I feel alone, stressed and unable to focus on anything."
+   ]
+  },
+  {
+   "id": "neg_neg_05",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "I am under so much pressure to find a job and every rejection hurts more.",
+    "Another rejection email today, I feel hopeless and constantly on edge, I am running out of savings."
+   ]
+  },
+  {
+   "id": "neg_neg_06",
+   "category": "neg_neg",
+   "expect": "stress",
+   "messages": [
+    "I feel overwhelmed taking care of my sick mother while working full time.",
+    "I am so tired and stressed that I cry every night, I feel I cannot keep this up any longer."
+   ]
+  },
+  {
+   "id": "pos_pos_01",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I had a relaxing weekend at the beach with my family and I feel happy.",
+    "We cooked together tonight and laughed a lot, I am grateful and in a very good mood."
+   ]
+  },
+  {
+   "id": "pos_pos_02",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I started a new hobby, painting, and I am really enjoying it.",
+    "I finished my first painting today and I feel proud and calm, life is good at the moment."
+   ]
+  },
+  {
+   "id": "pos_pos_03",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "My day was pretty ordinary, I went to class and then to the gym.",
+    "Afterwards I had dinner with a friend and we talked about movies, it was a nice and easy evening."
+   ]
+  },
+  {
+   "id": "pos_pos_04",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I adopted a puppy last week and he makes me smile every day.",
+    "We went for a long walk today and I feel peaceful, cheerful and full of energy."
+   ]
+  },
+  {
+   "id": "pos_pos_05",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I got a small promotion at work and my team congratulated me.",
+    "I feel satisfied and optimistic about the coming months, everything is going smoothly."
+   ]
+  },
+  {
+   "id": "pos_pos_06",
+   "category": "pos_pos",
+   "expect": "no_stress",
+   "messages": [
+    "I am looking forward to the weekend trip with my friends.",
+    "We packed everything and I feel excited and relaxed, it is going to be a lot of fun."
+   ]
+  }
+ ]
+}

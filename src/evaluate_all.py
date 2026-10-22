@@ -2,6 +2,11 @@
 
     python src/evaluate_all.py --task all        # stress | emotion | depression | all
 Chạy find_thresholds.py trước nếu muốn ngưỡng riêng cho từng cảm xúc.
+
+Dùng cho ablation (chỉ với --task stress hoặc depression):
+    --model-dir DIR   đánh giá mô hình ở thư mục khác (vd. bản huấn luyện không class weight)
+    --tag NAME        thêm tiền tố NAME vào tên các tệp kết quả để không ghi đè kết quả chính
+    --windowed        chấm từng mẫu bằng cửa sổ trượt (modeling.predict_text) thay vì cắt cụt ở max_length
 """
 import argparse
 import json
@@ -14,16 +19,25 @@ import modeling
 from datasets_io import load_split
 
 
+TAG = ""
+
+
 def _out(name):
     config.REPORT_DIR.mkdir(exist_ok=True)
-    return config.REPORT_DIR / name
+    path = config.REPORT_DIR / (f"{TAG}_{name}" if TAG else name)
+    config.archive_existing(path)                # giữ lại kết quả cũ trong reports/_archive/
+    return path
 
 
-def eval_single(task):
+def eval_single(task, model_dir=None, windowed=False):
     names = ["no_stress", "stress"] if task == "stress" else config.DEPRESSION_LABELS
     test = load_split(task, "test")
-    tok, model = modeling.load(config.find_model(task))
-    probs = modeling.predict_probs(tok, model, test["text"].tolist(), config.MAX_LEN[task])
+    tok, model = modeling.load(model_dir or config.find_model(task))
+    if windowed:
+        probs = np.array([modeling.predict_text(tok, model, t, config.MAX_LEN[task], config.WINDOW_WORDS[task])
+                          for t in test["text"].tolist()])
+    else:
+        probs = modeling.predict_probs(tok, model, test["text"].tolist(), config.MAX_LEN[task])
     summary, per_class, cm = metrics.single_label_report(
         test["label"], probs.argmax(1), names, ordinal=(task == "depression"))
     per_class.to_csv(_out(f"{task}_per_class.csv"), index=False)
@@ -65,14 +79,20 @@ def eval_emotion():
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", choices=["stress", "emotion", "depression", "all"], default="all")
+    ap.add_argument("--model-dir", default=None)
+    ap.add_argument("--tag", default="")
+    ap.add_argument("--windowed", action="store_true")
     a = ap.parse_args()
+    if (a.model_dir or a.windowed) and a.task not in ("stress", "depression"):
+        raise SystemExit("--model-dir và --windowed chỉ dùng với --task stress hoặc depression")
+    TAG = a.tag
     summary = {}
     if a.task in ("stress", "all"):
-        summary["stress"] = eval_single("stress")
+        summary["stress"] = eval_single("stress", a.model_dir, a.windowed)
     if a.task in ("emotion", "all"):
         summary["emotion"] = eval_emotion()
     if a.task in ("depression", "all"):
-        summary["depression"] = eval_single("depression")
+        summary["depression"] = eval_single("depression", a.model_dir, a.windowed)
     with open(_out("results.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     print("\nĐã ghi vào", config.REPORT_DIR)

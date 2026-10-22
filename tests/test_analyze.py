@@ -36,17 +36,48 @@ def analyze_mod(monkeypatch):
     sys.modules.pop("analyze", None)
 
 
-def test_window_and_latest_only_emotion(analyze_mod, tmp_path, monkeypatch):
+def test_window_scores_each_message_and_latest_only_emotion(analyze_mod, tmp_path, monkeypatch):
     monkeypatch.setattr(config, "EMOTION_THRESHOLD_FILE", tmp_path / "none.json")
     msgs = [f"message {i}" for i in range(8)]
     out = analyze_mod.analyze_conversation(msgs, window=3)
-    stress_call = analyze_mod._calls[0]["text"]
-    assert stress_call == "message 5 message 6 message 7"          # chỉ 3 tin gần nhất
+    stress_texts = [c["text"] for c in analyze_mod._calls if not c["multilabel"]]
+    assert "message 5" in stress_texts and "message 7" in stress_texts and "message 4" not in stress_texts
     emo_call = [c for c in analyze_mod._calls if c["multilabel"]][0]
     assert emo_call["text"] == "message 7" and emo_call["aggregate"] == "max"
     assert out["stress"] == config.STRESS_YES and abs(out["stress_probability"] - 0.8) < 1e-9
     assert out["depression"] == "moderate" and out["n_messages_used"] == 3
-    assert [e for e, _ in out["emotions"]] == ["fear"]              # sadness 0.2 < ngưỡng 0.25
+    assert [e for e, _ in out["emotions"]] == ["fear"]
+
+
+def test_recency_weights():
+    w = analyze_weights()
+    assert abs(w.sum() - 1) < 1e-9 and w[-1] > w[0]
+    assert abs(analyze_weights(decay=1.0)[0] - 1 / 3) < 1e-9
+    with pytest.raises(ValueError):
+        analyze_weights(decay=0)
+
+
+def analyze_weights(n=3, decay=0.4):
+    had = "modeling" in sys.modules
+    sys.modules.setdefault("modeling", types.ModuleType("modeling"))
+    try:
+        sys.modules.pop("analyze", None)
+        import analyze
+        return analyze.recency_weights(n, decay)
+    finally:
+        sys.modules.pop("analyze", None)
+        if not had:
+            sys.modules.pop("modeling", None)
+
+
+def test_positive_after_negative_recovers(analyze_mod, monkeypatch):
+    """Câu tích cực sau câu tiêu cực phải kéo kết quả xuống, không bị dính."""
+    probs = {"I feel hopeless and stressed": 0.95, "I am happy today": 0.05}
+    analyze_mod._msg_cache.clear()
+    monkeypatch.setattr(analyze_mod, "stress_probs", lambda t: np.array([1 - probs[t], probs[t]]))
+    out = analyze_mod.analyze_conversation(list(probs), window=5, decay=0.4)
+    assert out["latest_stress_probability"] == 0.05
+    assert out["stress_probability"] < 0.5 and out["stress"] == config.STRESS_NO
 
 
 def test_default_threshold_filters(analyze_mod, tmp_path, monkeypatch):

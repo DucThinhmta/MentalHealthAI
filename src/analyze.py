@@ -67,30 +67,57 @@ def predict_depression(text):
 
 
 # ---------------------------------------------------------------- Tổng hợp
-def analyze_conversation(user_messages, window=5):
+_msg_cache = {}
+
+
+def _message_probs(text):
+    """(xác suất stress, xác suất depression) của MỘT tin nhắn; nhớ kết quả để không tính lại."""
+    if text not in _msg_cache:
+        if len(_msg_cache) > 512:
+            _msg_cache.clear()
+        _msg_cache[text] = (stress_probs(text), depression_probs(text))
+    return _msg_cache[text]
+
+
+def recency_weights(n, decay):
+    """Trọng số n tin nhắn (cũ -> mới), tổng = 1. Tin mới nhất nặng nhất, mỗi tin cũ hơn nhân `decay`."""
+    if not 0 < decay <= 1:
+        raise ValueError("decay phải thuộc (0, 1]")
+    w = np.array([decay ** (n - 1 - i) for i in range(n)], dtype=float)
+    return w / w.sum()
+
+
+def analyze_conversation(user_messages, window=5, decay=None):
     """Phân tích hội thoại nhiều lượt.
 
-    - Stress + Depression: dùng `window` tin nhắn gần nhất (văn bản dài được chia cửa sổ,
-      nên không còn bị cắt mất phần cuối như khi ghép toàn bộ lịch sử).
+    - Mỗi tin nhắn được chấm RIÊNG, rồi gộp `window` tin gần nhất bằng trung bình có trọng số
+      ưu tiên tin mới (decay). Nhờ vậy một câu tích cực đứng sau câu tiêu cực sẽ kéo kết quả lên
+      ngay thay vì bị câu tiêu cực cũ "dính" mãi như khi nối các câu thành một đoạn.
+    - Trả cả kết quả gộp (stress, depression) lẫn riêng tin mới nhất (latest_*).
     - Emotion: chỉ tin nhắn mới nhất (cảm xúc thay đổi theo từng câu).
     """
     messages = [m.strip() for m in user_messages if m and m.strip()]
     if not messages:
         raise ValueError("Cần ít nhất một tin nhắn không rỗng.")
-    context = " ".join(messages[-window:])
-
-    sp = stress_probs(context)
-    dp = depression_probs(context)
+    decay = config.RECENCY_DECAY if decay is None else decay
+    recent = messages[-window:]
+    per_msg = [_message_probs(m) for m in recent]
+    w = recency_weights(len(recent), decay)
+    sp = sum(wi * p[0] for wi, p in zip(w, per_msg))
+    dp = sum(wi * p[1] for wi, p in zip(w, per_msg))
+    latest_sp, latest_dp = per_msg[-1]
     k_s, k_d = int(sp.argmax()), int(dp.argmax())
     return {
         "stress": config.STRESS_YES if k_s == 1 else config.STRESS_NO,
         "stress_confidence": float(sp[k_s]),
-        "stress_probability": float(sp[1]),          # xác suất CÓ stress (dễ đọc trên giao diện)
+        "stress_probability": float(sp[1]),                     # gộp có trọng số (xu hướng hội thoại)
+        "latest_stress_probability": float(latest_sp[1]),       # riêng tin mới nhất
         "emotions": predict_emotion(messages[-1]),
         "depression": config.DEPRESSION_LABELS[k_d],
         "depression_confidence": float(dp[k_d]),
         "depression_probs": {l: float(p) for l, p in zip(config.DEPRESSION_LABELS, dp)},
-        "n_messages_used": min(window, len(messages)),
+        "latest_depression": config.DEPRESSION_LABELS[int(latest_dp.argmax())],
+        "n_messages_used": len(recent),
     }
 
 

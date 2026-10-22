@@ -1,0 +1,5 @@
+task,model,accuracy,macro_f1,f1_per_class,qwk
+stress,TF-IDF + LogReg,0.7216783216783217,0.7197045062792415,,
+stress,TF-IDF + LinearSVC,0.7328671328671329,0.7325134316196878,,
+depression,TF-IDF + LogReg,0.6652601969057665,0.4124622868024605,"[np.float64(0.829), np.float64(0.228), np.float64(0.345), np.float64(0.248)]",0.3760217983651226
+depression,TF-IDF + LinearSVC,0.69901547116737,0.3521142164613455,"[np.float64(0.848), np.float64(0.17), np.float64(0.301), np.float64(0.089)]",0.2731499802136921
