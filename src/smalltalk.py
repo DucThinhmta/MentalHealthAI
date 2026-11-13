@@ -11,8 +11,12 @@ from dataclasses import dataclass
 import config
 from textutils import strip_accents
 
-_OPT_PRE = r"(?:(?:hey|hi|hello|ok|okay|so|and|please|well)[ ]+)*"
-_OPT_POST = r"(?:[ ]+(?:there|bot|please|today|now|mentalhealthai|everyone|nhe|nha|a|ah|oi|ban|di|nao|nhi))*"
+# Từ đệm hay gặp ở đầu/cuối câu ("từ từ đã, tên bạn là gì vậy?", "cho mình hỏi...", "... đi nhé").
+_OPT_PRE = (r"(?:(?:hey|hi|hello|ok|okay|so|and|please|well|but|wait|tu tu da|tu da|khoan da|the|vay|vay thi|"
+            r"nhung|ma|oi|e|ui|a|uh|um|cho (?:minh|toi|em|to|tui) hoi|(?:minh|toi|em|to|tui) hoi|hoi chut|"
+            r"ban oi|bot oi|mentalhealthai oi)[ ]+)*")
+_OPT_POST = (r"(?:[ ]+(?:there|bot|please|today|now|then|mentalhealthai|everyone|nhe|nha|a|ah|oi|ban|di|nao|nhi|"
+             r"vay|the|day|ha|hả|khong|ko|voi|duoc khong|duoc ko|cai|chut|xem|thu|ky|ki|ro|nua))*")
 
 # (intent, ngôn ngữ, regex khớp TOÀN BỘ một mệnh đề đã bỏ dấu, chữ thường)
 _RULES = [
@@ -21,9 +25,17 @@ _RULES = [
     ("how_are_you", "en", r"(?:how are you(?: doing| feeling)?|how are u|how r u|how'?s it going|how is it going|what'?s up|whats up|sup|how do you do)"),
     ("how_are_you", "vi", r"(?:ban (?:co )?khoe khong|ban the nao|dao nay ban the nao)"),
     ("ask_name", "en", r"(?:(?:can|may) i (?:know|ask) )?(?:tell me )?(?:what(?:'s| is|s)? (?:your|ur) name|what(?:'s| is)? you called|what are you called|(?:your|ur) name|who are you|who r u)"),
-    ("ask_name", "vi", r"(?:ban ten (?:la )?gi|ten (?:cua )?ban la gi|ten ban|ban la ai)"),
+    ("ask_name", "vi", r"(?:ban ten (?:la )?gi|ten (?:cua )?ban (?:la )?gi|ten ban|ban la ai|ban ten (?:gi|la gi))"),
+    ("introduce", "en", r"(?:(?:can you |could you )?(?:introduce yourself|tell me (?:more )?about yourself|"
+                         r"tell me about you|describe yourself|what are you exactly))"),
+    ("introduce", "vi", r"(?:(?:ban )?(?:hay |thu |co the )?gioi thieu (?:ky |them |chut |mot chut |so qua )?"
+                         r"(?:ve )?(?:ban than|ban|chinh ban|minh|chinh minh)(?: (?:ban|minh))?|"
+                         r"ke (?:cho minh nghe )?(?:ve|them ve) ban|noi (?:ve|them ve) ban(?: than)?|"
+                         r"(?<!ten )ban la (?:gi|cai gi|chatbot gi))"),
     ("capabilities", "en", r"(?:what can you do|what do you do|what are you for|how can you help(?: me)?|can you help me|how do you work|what are you|what is this|what is this app|help)"),
-    ("capabilities", "vi", r"(?:ban lam duoc gi|ban giup duoc gi|ban co the lam gi|ban giup gi duoc|ban hoat dong the nao)"),
+    ("capabilities", "vi", r"(?:(?:ban )?(?:co the )?lam duoc (?:nhung )?gi|(?:ban )?giup duoc (?:minh |gi |nhung gi )?"
+                            r"(?:gi)?|ban co the (?:lam|giup) (?:gi|minh gi)|ban giup gi duoc|ban hoat dong (?:the nao|ra sao)|"
+                            r"ban dung de lam gi|app nay (?:la gi|de lam gi|dung de lam gi))"),
     ("thanks", "en", r"(?:thanks|thank you|thank u|thx|ty|thanks a lot|thank you so much|thanks so much|many thanks)"),
     ("thanks", "vi", r"(?:cam on(?: ban| nhieu)?|cam on rat nhieu)"),
     ("bye", "en", r"(?:bye|bye bye|goodbye|see you|see you later|see ya|good night|take care|gotta go)"),
@@ -36,7 +48,9 @@ _RULES = [
     ("bored", "en", r"(?:i'?m bored|i am bored|so bored|bored|nothing to do|i have nothing to do)"),
     ("bored", "vi", r"(?:chan qua|buon chan|chan ghe|chan the|khong co gi lam)"),
     ("who_made", "en", r"(?:who (?:made|created|built|developed) you|who is your (?:creator|developer|maker)|are you a (?:bot|robot|ai|human|real person|person)|are you human|are you real)"),
-    ("who_made", "vi", r"(?:ai (?:tao|lam|viet) ra ban|ban la (?:bot|nguoi|ai that|robot|may)|ban co phai la (?:nguoi|bot|robot))"),
+    ("who_made", "vi", r"(?:ai (?:tao|lam|viet|lap trinh) ra ban|ban (?:do ai|duoc ai) (?:tao|lam)(?: ra)?|"
+                        r"ban la (?:bot|nguoi|ai that|robot|may|nguoi that)|"
+                        r"ban co phai (?:la )?(?:nguoi(?: that)?|bot|robot|ai|may|tri tue nhan tao))"),
     ("sorry", "en", r"(?:sorry|i'?m sorry|my bad|excuse me|pardon)"),
     ("sorry", "vi", r"(?:xin loi|loi cua minh|sorry)"),
     ("joke", "en", r"(?:tell me a joke|say something funny|make me laugh|joke|another joke)"),
@@ -53,6 +67,9 @@ _RULES = [
     ("good_morning", "vi", r"(?:chao buoi sang|chuc buoi sang tot lanh)"),
 ]
 _COMPILED = [(i, lang, re.compile(rf"{_OPT_PRE}(?:{p}){_OPT_POST}")) for i, lang, p in _RULES]
+# Câu hỏi HƯỚNG VỀ BOT: được nhận ra cả khi nằm giữa câu dài ("ừ mà khoan, bạn tên là gì thế?").
+BOT_INTENTS = ("ask_name", "introduce", "capabilities", "who_made", "how_old", "what_doing")
+_BOT_SEARCH = [(i, lang, re.compile(rf"\b(?:{p})\b")) for i, lang, p in _RULES if i in BOT_INTENTS]
 _SPLIT = re.compile(r"[,.!?;:\n]+|\s+(?:and|va)\s+")
 
 
@@ -86,12 +103,37 @@ def detect(text: str):
     return SmallTalk(tuple(intents), "vi" if "vi" in langs else "en")
 
 
+def detect_bot_question(text: str):
+    """SmallTalk nếu câu CÓ CHỨA một câu hỏi về bot (tên, giới thiệu, làm được gì...), dù có thêm từ khác.
+
+    Bên gọi chỉ nên dùng khi câu không kể chuyện gì đáng lo (pipeline kiểm tra điều đó)."""
+    if not text or not text.strip():
+        return None
+    norm = _normalize(text)
+    intents, langs = [], set()
+    for intent, lang, rx in _BOT_SEARCH:
+        if rx.search(norm) and intent not in intents:
+            intents.append(intent)
+            langs.add(lang)
+    if not intents:
+        return None
+    if "introduce" in intents and "ask_name" in intents:
+        intents.remove("ask_name")                       # lời giới thiệu đã có tên
+    return SmallTalk(tuple(intents), "vi" if "vi" in langs else "en")
+
+
 _REPLIES = {
     "en": {
         "greeting_short": "Hello!",
         "greeting": "Hello! I'm {bot}, a research chatbot that listens and looks for signs of stress and emotions in what you share.",
         "how_are_you": "I'm doing well, thank you for asking!",
         "ask_name": "My name is {bot}. I'm a research assistant, not a doctor, so I can't diagnose anything.",
+        "introduce": ("I'm {bot}, a chatbot built for a student research project on mental wellbeing. I'm here to "
+                      "listen without judging: you can tell me about school, sleep, stress, or anything on your "
+                      "mind. As we talk, I pick up on signs of stress and how you're feeling, and when I know "
+                      "enough I can sum things up with a few ideas that might help. I'm a computer program, not a "
+                      "doctor, so I can't diagnose anything, and in an emergency please call your local emergency "
+                      "number."),
         "capabilities": ("You can tell me how you've been feeling or what's on your mind. I'll look for signs of "
                          "stress, emotions and how heavy the text sounds, and reply in a supportive way. "
                          "I'm a research tool and my results can be wrong."),
@@ -116,6 +158,12 @@ _REPLIES = {
         "greeting": "Xin chào! Mình là {bot}, một chatbot nghiên cứu biết lắng nghe và tìm dấu hiệu căng thẳng, cảm xúc trong những gì bạn chia sẻ.",
         "how_are_you": "Mình vẫn ổn, cảm ơn bạn đã hỏi!",
         "ask_name": "Mình tên là {bot}. Mình là trợ lý nghiên cứu, không phải bác sĩ nên không thể chẩn đoán gì cả.",
+        "introduce": ("Mình là {bot}, một chatbot được làm cho đề tài nghiên cứu khoa học của sinh viên về sức khỏe "
+                      "tinh thần. Việc của mình là lắng nghe, không phán xét: bạn có thể kể chuyện học, chuyện ngủ, "
+                      "áp lực hay bất cứ điều gì đang nghĩ. Trong lúc trò chuyện, mình để ý các dấu hiệu căng thẳng và "
+                      "cảm xúc của bạn, và khi đã hiểu đủ thì mình có thể tổng kết lại kèm vài gợi ý nhỏ (nút \"Xem "
+                      "tổng kết\"). Mình là chương trình máy tính, không phải bác sĩ nên không chẩn đoán được; khi "
+                      "khẩn cấp bạn hãy gọi 115 nhé."),
         "capabilities": ("Bạn có thể kể mình nghe dạo này bạn cảm thấy thế nào hoặc điều đang khiến bạn bận tâm. "
                          "Mình sẽ tìm dấu hiệu stress, cảm xúc và mức độ nặng nề của nội dung rồi phản hồi nhẹ nhàng. "
                          "Mình là công cụ nghiên cứu nên kết quả có thể sai. Lưu ý: các mô hình phân tích hiểu tiếng Anh tốt hơn."),
@@ -144,7 +192,7 @@ def reply(st: "SmallTalk", bot_name: str = None) -> str:
     r = _REPLIES[st.lang]
     multi = len(st.intents) > 1
     parts = [r["greeting_short" if (i == "greeting" and multi) else i].format(bot=bot) for i in st.intents]
-    ask_feelings = any(i in st.intents for i in ("greeting", "how_are_you", "ask_name", "capabilities",
+    ask_feelings = any(i in st.intents for i in ("greeting", "how_are_you", "ask_name", "capabilities", "introduce",
                                                   "good_morning", "who_made", "how_old", "what_doing"))
     if ask_feelings:
         parts.append(r["_follow_after_how"] if "how_are_you" in st.intents else r["_follow"])

@@ -106,12 +106,16 @@ def test_llm_generate_reply_builds_request(monkeypatch):
     class FakeMessages:
         def create(self, **kw):
             sent.update(kw)
-            return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text=" Xin chào ")])
+            return types.SimpleNamespace(stop_reason="end_turn",
+                                         content=[types.SimpleNamespace(type="text", text=" Xin chào ")])
 
     monkeypatch.setattr(llm_client, "_client", lambda: types.SimpleNamespace(messages=FakeMessages()))
     result = {"stress": config.STRESS_YES, "emotions": [("fear", 0.4)], "depression": "mild"}
     hist = [{"role": "user", "content": "I'm worried"}]
     assert llm_client.generate_reply(result, "I'm worried", hist) == "Xin chào"
-    assert "fear" in sent["system"] and "KHÔNG phải chẩn đoán" in sent["system"]
-    assert sent["messages"][-1] == {"role": "user", "content": "I'm worried"} and sent["max_tokens"] == 400
+    system = "\n".join(block["text"] for block in sent["system"])
+    assert "sợ hãi" in system and "không chẩn đoán" in system and "hay sai" in system
+    assert sent["system"][0]["cache_control"] == {"type": "ephemeral"}       # phần nhân vật cố định cache được
+    assert sent["messages"][-1] == {"role": "user", "content": "I'm worried"}
+    assert sent["max_tokens"] == llm_client.MAX_TOKENS and sent["output_config"] == {"effort": llm_client.EFFORT}
     assert llm_client.translate_to_english("xin chào") == "Xin chào"

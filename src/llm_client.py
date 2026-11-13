@@ -1,25 +1,74 @@
-"""Tầng LLM (tùy chọn) qua Anthropic API: sinh phản hồi và dịch Việt -> Anh.
+"""Tầng LLM (tùy chọn) qua Anthropic API: sinh phản hồi (có streaming) và dịch Việt -> Anh.
 
 Chỉ bật khi có biến môi trường ANTHROPIC_API_KEY và đã cài gói `anthropic`.
 Không bao giờ dùng cho tình huống 'crisis' (đã có thông điệp cố định trong safety.py).
 Ba mô hình BERT vẫn là tầng phân tích; LLM chỉ là tầng ngôn ngữ.
+
+Biến môi trường tùy chọn:
+    ANTHROPIC_MODEL   (mặc định claude-sonnet-5-5)
+    ANTHROPIC_EFFORT  (mặc định low: trò chuyện ngắn không cần suy luận sâu; đặt rỗng để bỏ tham số)
 """
 import importlib.util
+import json
 import os
 
+import assessment
+import config
+
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+EFFORT = os.getenv("ANTHROPIC_EFFORT", "low")
+# Mô hình có thể suy nghĩ trước khi viết và phần đó cũng tính vào max_tokens, nên để dư;
+# độ dài câu trả lời do prompt quyết định.
+MAX_TOKENS = 4000
+MAX_HISTORY_MESSAGES = 40            # ~20 lượt: đủ để nhớ những gì người dùng đã kể
 
-SYSTEM_PROMPT = """Bạn là trợ lý lắng nghe trong một đề tài nghiên cứu về nhận diện tín hiệu sức khỏe tâm lý.
-Nguyên tắc:
-- Đồng cảm, ấm áp, không phán xét. Trả lời cùng ngôn ngữ với người dùng (mặc định tiếng Việt).
-- Ngắn gọn: 2-4 câu, kết thúc bằng tối đa MỘT câu hỏi mở nhẹ nhàng.
-- KHÔNG chẩn đoán, không gọi tên rối loạn tâm lý, không kê đơn, không hứa hẹn kết quả.
-- Không nhắc tới điểm số hay tên mô hình; chỉ dùng "tín hiệu tham khảo" để điều chỉnh giọng điệu.
-- Gợi ý nhẹ nhàng (nghỉ ngơi, chia nhỏ vấn đề, nói chuyện với người tin cậy) khi phù hợp.
-- Nếu người dùng nhắc đến tự hại hoặc không muốn sống: khuyến khích liên hệ ngay người thân/cấp cứu 115.
+PERSONA_PROMPT = """Bạn là {bot}, người bạn trò chuyện trong một ứng dụng nghiên cứu của sinh viên về sức khỏe tinh thần. \
+Người đang nhắn với bạn thường là sinh viên hoặc người trẻ, tìm đến để có ai đó lắng nghe: có khi họ đang căng thẳng, \
+buồn, mất ngủ; có khi họ chỉ muốn tán gẫu. Việc của bạn là trò chuyện với họ như một người bạn tinh tế và ấm áp sẽ làm, \
+chứ không phải như một tổng đài viên hay một bảng câu hỏi.
 
-Tín hiệu tham khảo từ các mô hình phân tích (KHÔNG phải chẩn đoán, có thể sai):
+Cách nói chuyện
+- Nói bằng ngôn ngữ người dùng đang dùng. Với tiếng Việt, mặc định xưng "mình" và gọi "bạn"; nếu họ tự xưng \
+em/anh/chị/tớ/cậu thì xưng hô lại cho hợp. Viết như nhắn tin: câu ngắn, từ ngữ đời thường, được dùng "ừ", "à", "nhỉ", \
+"nha" khi tự nhiên. Không dùng gạch đầu dòng, tiêu đề hay in đậm.
+- Độ dài đi theo người dùng: họ nhắn một câu thì đáp một hai câu; họ kể dài thì có thể đáp dài hơn, nhưng hiếm khi \
+quá bốn câu.
+- Bám vào chi tiết cụ thể họ vừa kể (môn học, người họ nhắc tới, chuyện xảy ra lúc nào) và nhớ những gì họ đã nói ở \
+các lượt trước, vì chính điều đó cho họ thấy mình đang được nghe thật sự. Tránh các câu mở đầu công thức lặp lại như \
+"Cảm ơn bạn đã chia sẻ" hay "Mình hiểu cảm giác của bạn"; mỗi lượt nên mở đầu khác nhau.
+- Lắng nghe trước, lời khuyên sau. Người đang buồn thường cần được hiểu hơn là được sửa. Chỉ gợi ý cách làm khi họ \
+hỏi, hoặc khi bạn đã hiểu rõ chuyện và thấy một gợi ý nhỏ, cụ thể sẽ giúp được; khi đó đưa một gợi ý thôi, đừng liệt kê.
+- Không phải lượt nào cũng cần câu hỏi. Có lúc chỉ cần ghi nhận và ở đó cùng họ. Khi hỏi thì hỏi một câu, cụ thể, \
+nối tiếp điều họ vừa nói.
+- Khi họ hỏi bạn một câu (về bạn, về ứng dụng, hay một câu ngoài lề), hãy trả lời đúng câu đó trước, ngắn gọn và thật thà; không biết thì nói không biết. Đừng lờ câu hỏi đi để hỏi sang chuyện khác.
+- Khi họ chỉ chào hỏi, đùa, hay nói chuyện phiếm thì cứ trò chuyện vui vẻ bình thường, có thể hài hước nhẹ; đừng lái \
+mọi thứ về chuyện tâm lý.
+
+Giới hạn cần giữ
+- Bạn là AI. Giọng điệu giống người, nhưng nếu được hỏi thì nói thật mình là chương trình máy tính, không có trải \
+nghiệm cá nhân, và đừng bịa ra chuyện đời mình.
+- Bạn không phải chuyên gia y tế: không chẩn đoán, không gọi tên rối loạn tâm lý cho người dùng, không khuyên dùng \
+thuốc, không hứa mọi chuyện sẽ ổn. Nếu họ hỏi "mình có bị trầm cảm không", hãy nói thật là bạn không đánh giá được \
+điều đó và người làm được là bác sĩ hoặc chuyên gia tâm lý.
+- Nếu người dùng nhắc tới việc tự làm hại bản thân, không muốn sống, hoặc đang gặp nguy hiểm: hãy nghiêm túc và dịu \
+dàng, nói rõ bạn lo cho họ, khuyến khích họ liên hệ ngay một người thân tin cậy hoặc gọi cấp cứu 115, và ở lại trò \
+chuyện với họ.
+- Khi sự nặng nề kéo dài nhiều ngày hoặc ảnh hưởng tới ăn, ngủ, học tập, hãy nhẹ nhàng gợi ý họ nói chuyện với người \
+thân hoặc chuyên gia tâm lý, một lần thôi, không nhắc đi nhắc lại."""
+
+SIGNALS_PROMPT = """Ghi chú nội bộ cho lượt này (người dùng không thấy). Đây là những gì hệ thống tổng hợp được \
+từ các tin nhắn của người dùng. Điểm mô hình hay sai, nhất là với câu ngắn, nên chỉ dùng làm gợi ý để chọn giọng \
+điệu; nếu lời người dùng nói khác đi thì tin lời họ. Đừng nhắc tới điểm số, nhãn, hay việc bạn đang "phân tích" họ.
 {signals}"""
+
+ASK_PROMPT = """Để hiểu người dùng đầy đủ hơn, hệ thống còn thiếu thông tin về: {domain}. Nếu hợp với mạch chuyện, \
+hãy lồng MỘT câu hỏi tự nhiên về điều này vào cuối câu trả lời (ví dụ: "{example}"), nhưng ưu tiên đáp lại điều họ \
+vừa nói trước. Nếu họ vừa hỏi bạn một câu, đang rất xúc động, hoặc vừa kể điều quan trọng thì bỏ qua, để lượt sau hỏi."""
+
+OFFER_PROMPT = """Hệ thống đã có đủ thông tin để tổng kết. Nếu chưa nhắc, có thể nói nhẹ nhàng ở cuối rằng khi nào \
+muốn, họ bấm nút "Xem tổng kết" để bạn tóm lại và gợi ý vài hướng."""
+
+_NO_ANALYSIS = "- Lượt này là câu xã giao/trò chuyện thường ngày nên không chạy phân tích."
 
 
 def is_available() -> bool:
@@ -31,16 +80,59 @@ def _client():
     return anthropic.Anthropic()
 
 
-def _signals(result: dict) -> str:
-    emotions = ", ".join(e for e, _ in result.get("emotions", [])[:3]) or "không rõ"
+def _signals(info: dict | None) -> str:
+    if not info:
+        return _NO_ANALYSIS
+    if "evidence" in info:
+        return _profile_signals(info)
+    result = info
+    emotions = ", ".join(config.EMOTION_VI.get(e, ("", e))[1] for e, _ in result.get("emotions", [])[:3])
+    depression = config.DEPRESSION_VI.get(result.get("depression"), "không rõ")
     return (
-        f"- Stress: {'có dấu hiệu' if result.get('stress') == 'Co dau hieu stress' else 'chưa rõ'}\n"
-        f"- Cảm xúc nổi bật ở câu mới nhất: {emotions}\n"
-        f"- Mức độ biểu hiện liên quan trầm cảm trong văn bản: {result.get('depression', 'không rõ')}"
+        f"- Dấu hiệu căng thẳng: {'có' if result.get('stress') == config.STRESS_YES else 'chưa thấy rõ'}\n"
+        f"- Cảm xúc nổi bật ở tin nhắn mới nhất: {emotions or 'không rõ'}\n"
+        f"- Mức độ nặng nề của nội dung (thang rất ít / nhẹ / vừa / nặng): {depression.lower()}"
     )
 
 
-def _normalize_history(history, user_message, max_turns=8):
+def _profile_signals(p):
+    lines = [f"- Số lượt người dùng đã kể: {p['n_turns']} (mức đủ dữ liệu: {p['evidence']})"]
+    if "stress" in p:
+        lines.append(f"- Căng thẳng trên cả cuộc trò chuyện: {p['stress']['overall']:.0%}, "
+                     f"mấy câu gần đây: {p['stress']['recent']:.0%}")
+    if "depression" in p:
+        lines.append("- Mức nặng nề của nội dung (rất ít / nhẹ / vừa / nặng): "
+                     + config.DEPRESSION_VI[p["depression"]["label"]].lower())
+    if p.get("emotions"):
+        lines.append("- Cảm xúc nổi bật: " + ", ".join(config.EMOTION_VI.get(e, ("", e))[1] for e, _ in p["emotions"][:3]))
+    if p["topics"]:
+        lines.append("- Chủ đề đã nhắc: " + ", ".join(assessment.TOPIC_VI.get(t, t).split(" ", 1)[-1]
+                                                       for t in p["topics"]))
+    if p["domains"]:
+        lines.append("- Đã biết: " + "; ".join(
+            f"{assessment.DOMAINS[d]['name'].lower()} {'đáng chú ý' if v == 'concern' else 'ổn'}"
+            for d, v in p["domains"].items()))
+    if p["self_moods"]:
+        lines.append(f"- Tâm trạng người dùng tự chấm: {p['self_moods'][-1]}/5")
+    return "\n".join(lines)
+
+
+def _system(info, ask_domain=None):
+    """Khối nhân vật cố định (cache được) + ghi chú thay đổi theo lượt."""
+    blocks = [
+        {"type": "text", "text": PERSONA_PROMPT.format(bot=config.BOT_NAME), "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": SIGNALS_PROMPT.format(signals=_signals(info))},
+    ]
+    if ask_domain:
+        spec = assessment.DOMAINS[ask_domain]
+        blocks.append({"type": "text", "text": ASK_PROMPT.format(domain=spec["name"].lower(),
+                                                                 example=spec["ask"]["vi"][0])})
+    if info and info.get("evidence") == "high":
+        blocks.append({"type": "text", "text": OFFER_PROMPT})
+    return blocks
+
+
+def _normalize_history(history, user_message, max_turns=MAX_HISTORY_MESSAGES):
     """Đảm bảo messages bắt đầu bằng 'user', xen kẽ vai trò và kết thúc bằng tin nhắn người dùng."""
     msgs = [{"role": m["role"], "content": m["content"]} for m in history[-max_turns:]]
     if not msgs or msgs[-1]["role"] != "user" or msgs[-1]["content"] != user_message:
@@ -56,22 +148,112 @@ def _normalize_history(history, user_message, max_turns=8):
     return merged
 
 
-def generate_reply(result: dict, user_message: str, history: list) -> str:
-    response = _client().messages.create(
-        model=MODEL,
-        max_tokens=400,
-        system=SYSTEM_PROMPT.format(signals=_signals(result)),
-        messages=_normalize_history(history, user_message),
-    )
-    return "".join(b.text for b in response.content if b.type == "text").strip()
+def _request(info, user_message, history, ask_domain=None):
+    kwargs = dict(model=MODEL, max_tokens=MAX_TOKENS, system=_system(info, ask_domain),
+                  messages=_normalize_history(history, user_message))
+    if EFFORT:
+        kwargs["output_config"] = {"effort": EFFORT}
+    return kwargs
+
+
+def _text(message) -> str:
+    """Văn bản của phản hồi; chuỗi rỗng nếu mô hình từ chối (bên gọi sẽ chuyển sang phản hồi theo luật)."""
+    if message.stop_reason == "refusal":
+        return ""
+    return "".join(b.text for b in message.content if b.type == "text").strip()
+
+
+def generate_reply(info: dict | None, user_message: str, history: list, ask_domain=None) -> str:
+    return _text(_client().messages.create(**_request(info, user_message, history, ask_domain)))
+
+
+def stream_reply(info: dict | None, user_message: str, history: list, ask_domain=None):
+    """Sinh phản hồi theo từng đoạn chữ (để giao diện hiện dần như đang gõ)."""
+    with _client().messages.stream(**_request(info, user_message, history, ask_domain)) as stream:
+        yield from stream.text_stream
+
+
+EXTRACT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "english": {"type": "string"},
+        "domains": {
+            "type": "object",
+            "properties": {d: {"type": "string", "enum": ["concern", "ok", "unknown"]} for d in assessment.DOMAINS},
+            "required": list(assessment.DOMAINS),
+            "additionalProperties": False,
+        },
+    },
+    "required": ["english", "domains"],
+    "additionalProperties": False,
+}
+EXTRACT_PROMPT = """You read one message from a user of a student wellbeing chatbot and return JSON.
+1. "english": the message translated into natural, colloquial English, keeping its emotional tone, intensity and \
+first-person voice (copy it unchanged if it is already English). Do not soften, summarize or explain.
+2. "domains": for each life area, what THIS message says about the user, using the bot's previous message as context \
+(a short answer like "cũng tạm" answers the bot's question). Use "concern" if it describes a problem, "ok" if it says \
+that area is fine, otherwise "unknown". Do not guess from tone alone.
+Areas: mood (overall mood); sleep; energy (tiredness, exhaustion); interest (enjoyment, motivation); focus \
+(concentration); appetite (eating); support (having someone to talk to: "concern" if alone or no one); duration \
+("concern" if it has lasted about two weeks or more, "ok" if it only started in the last few days)."""
+
+
+def extract(user_message: str, last_bot: str = "") -> dict:
+    """Một lần gọi: bản dịch tiếng Anh cho mô hình BERT + trạng thái các khía cạnh sinh hoạt trong câu trả lời."""
+    content = (f"Bot's previous message: {last_bot}\n\n" if last_bot else "") + f"User message: {user_message}"
+    output_config = {"format": {"type": "json_schema", "schema": EXTRACT_SCHEMA}}
+    if EFFORT:
+        output_config["effort"] = EFFORT
+    text = _text(_client().messages.create(model=MODEL, max_tokens=2000, system=EXTRACT_PROMPT,
+                                           messages=[{"role": "user", "content": content}],
+                                           output_config=output_config))
+    if not text:
+        raise RuntimeError("extract: không có kết quả")
+    data = json.loads(text)
+    return {"english": data["english"].strip(),
+            "domains": {d: v for d, v in data["domains"].items() if v in ("ok", "concern")}}
+
+
+SUMMARY_PROMPT = """Người dùng vừa bấm "Xem tổng kết". Hãy viết lời tổng kết cuộc trò chuyện gửi tới họ, bằng tiếng Việt, \
+giọng ấm áp như một người bạn, 2 đoạn ngắn, tổng cộng khoảng 90-140 từ, không gạch đầu dòng, không tiêu đề:
+- Đoạn 1: tóm lại những gì bạn đã nghe được từ họ (chi tiết cụ thể họ kể), và điều bạn nhận thấy lặp lại qua cả \
+cuộc trò chuyện, theo cách ghi nhận chứ không phán xét.
+- Đoạn 2: một hai hướng nhỏ, cụ thể họ có thể thử ngay, dựa trên đúng chuyện của họ. Nếu nhận xét chung là \
+"Căng thẳng đáng chú ý" hoặc "Nặng nề", nói rõ nhưng nhẹ nhàng rằng nên tìm gặp chuyên gia tâm lý hoặc phòng tư vấn \
+của trường.
+Không chẩn đoán, không gọi tên bệnh, không nhắc điểm số. Giao diện sẽ hiện thêm các thẻ gợi ý chi tiết bên dưới, \
+nên đừng liệt kê dài.
+
+Dữ liệu tổng hợp:
+{signals}
+- Nhận xét chung của hệ thống: {level}"""
+
+
+def stream_summary(profile: dict, history: list):
+    level = assessment.LEVELS[profile["level"]][0] if profile.get("level") is not None else "chưa đủ dữ liệu"
+    transcript = "\n".join(f"{'Người dùng' if m['role'] == 'user' else 'Bot'}: {m['content']}"
+                           for m in history[-MAX_HISTORY_MESSAGES:])
+    kwargs = dict(model=MODEL, max_tokens=MAX_TOKENS,
+                  system=[{"type": "text", "text": PERSONA_PROMPT.format(bot=config.BOT_NAME),
+                           "cache_control": {"type": "ephemeral"}},
+                          {"type": "text", "text": SUMMARY_PROMPT.format(signals=_profile_signals(profile),
+                                                                         level=level)}],
+                  messages=[{"role": "user", "content": f"Cuộc trò chuyện:\n{transcript}\n\nHãy viết lời tổng kết."}])
+    if EFFORT:
+        kwargs["output_config"] = {"effort": EFFORT}
+    with _client().messages.stream(**kwargs) as stream:
+        yield from stream.text_stream
 
 
 def translate_to_english(text: str) -> str:
     """Dịch để mô hình BERT (huấn luyện bằng tiếng Anh) phân tích được tin nhắn tiếng Việt."""
-    response = _client().messages.create(
-        model=MODEL,
-        max_tokens=600,
-        system="Translate the user's message into natural English. Output ONLY the translation.",
+    kwargs = dict(
+        model=MODEL, max_tokens=2000,
+        system=("Translate the user's message into natural, colloquial English, keeping its emotional tone, "
+                "intensity and first-person voice. The translation is fed to text classifiers, so do not soften, "
+                "summarize or explain anything. Output only the translation."),
         messages=[{"role": "user", "content": text}],
     )
-    return "".join(b.text for b in response.content if b.type == "text").strip() or text
+    if EFFORT:
+        kwargs["output_config"] = {"effort": EFFORT}
+    return _text(_client().messages.create(**kwargs)) or text

@@ -16,7 +16,7 @@ import numpy as np
 import config
 import metrics
 import modeling
-from datasets_io import load_split
+from datasets_io import extra_names, load_extra, load_split, load_translated
 
 
 TAG = ""
@@ -43,6 +43,11 @@ def eval_single(task, model_dir=None, windowed=False):
     per_class.to_csv(_out(f"{task}_per_class.csv"), index=False)
     metrics.plot_confusion(cm, names, f"Ma trận nhầm lẫn - {task}", _out(f"{task}_confusion.png"))
     metrics.plot_f1_by_class(per_class, "class", f"F1 theo lớp - {task}", _out(f"{task}_f1.png"))
+    vi = load_translated(task, "test", lang="vi")
+    if vi is not None:                           # tập test dịch máy sang tiếng Việt: ước lượng gần đúng cho tiếng Việt
+        pv = modeling.predict_probs(tok, model, vi["text"].tolist(), config.MAX_LEN[task])
+        summary["vietnamese_mt_test"], _, _ = metrics.single_label_report(
+            vi["label"], pv.argmax(1), names, ordinal=(task == "depression"))
     print(f"\n=== {task.upper()} (n={len(test)}) ===")
     print(json.dumps(summary, indent=2)); print(per_class.round(4).to_string(index=False)); print(cm)
     return summary
@@ -70,6 +75,21 @@ def eval_emotion():
     table.to_csv(_out("emotion_per_class.csv"), index=False)
     metrics.plot_f1_by_class(table, "emotion", "F1 theo cảm xúc (đỏ: liên quan sức khỏe tâm lý)",
                              _out("emotion_f1.png"), highlight=config.MENTAL_HEALTH_EMOTIONS)
+    # Các bộ bổ sung và bản dịch máy (nếu có): đánh giá RIÊNG từng bộ, macro-F1 chỉ tính trên nhãn có mặt.
+    sets = [(name, load_extra("emotion", "test", [name])) for name in extra_names("emotion")]
+    for name in ["core"] + extra_names("emotion"):
+        for lg in ("vi", "en"):
+            tr = load_translated("emotion", "test", [name], lang=lg)
+            if tr is not None:
+                sets.append((f"{name}_mt_{lg}", tr))
+    for name, ex in sets:
+        ye = np.array(ex["labels"].tolist())
+        pe = modeling.predict_probs(tok, model, ex["text"].tolist(), config.MAX_LEN["emotion"], multilabel=True)
+        present = ye.sum(axis=0) > 0
+        s, tab = metrics.emotion_report(ye, pe, thr)
+        s["f1_macro_present_labels"] = float(tab.loc[present, "f1"].mean())
+        s["top1_accuracy"] = float((pe.argmax(1) == ye.argmax(1)).mean())   # mỗi câu đúng một nhãn
+        results[f"extra_{name}"] = s
     print("\n=== EMOTION ===")
     print(json.dumps(results, indent=2))
     print(table.sort_values("f1").round(4).to_string(index=False))

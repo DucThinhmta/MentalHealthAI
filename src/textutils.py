@@ -19,6 +19,18 @@ def looks_vietnamese(text: str, min_chars: int = 2) -> bool:
     return sum(1 for c in text if c in _VI_CHARS) >= min_chars
 
 
+# Từ thường gặp khi gõ tiếng Việt KHÔNG dấu (đủ đặc trưng để không lẫn với tiếng Anh).
+_VI_PLAIN = re.compile(r"\b(?:minh|toi|tui|khong|nhung|duoc|roi|qua|buon|vui|met|chan|"
+                       r"hom nay|cam thay|nhieu|the nao|cam on|xin chao|chao)\b")
+
+
+def detect_lang(text: str) -> str:
+    """'vi' nếu có dấu tiếng Việt hoặc có từ 2 từ tiếng Việt không dấu đặc trưng trở lên; ngược lại 'en'."""
+    if looks_vietnamese(text):
+        return "vi"
+    return "vi" if len(_VI_PLAIN.findall(strip_accents(text))) >= 2 else "en"
+
+
 def word_pattern(words):
     """Regex khớp nguyên từ (tránh 'work' khớp 'network', 'test' khớp 'latest')."""
     alternatives = "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))

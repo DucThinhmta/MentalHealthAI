@@ -84,8 +84,11 @@ def crisis_message(user_text: str = "") -> str:
     return vi + en
 
 
-def elevated_note() -> str:
+def elevated_note(lang: str = "vi") -> str:
     """Ghi chú nhẹ khi mô hình thấy tín hiệu nặng nhưng chưa có biểu hiện tự hại rõ ràng."""
+    if lang == "en":
+        return ("If this heaviness lasts or starts getting in the way of everyday life, "
+                "it's worth talking to someone close to you or a mental health professional.")
     return (
         "Nếu cảm giác nặng nề này kéo dài hoặc ảnh hưởng đến sinh hoạt hằng ngày, "
         "bạn nên cân nhắc trò chuyện với người thân hoặc một chuyên gia sức khỏe tâm lý."

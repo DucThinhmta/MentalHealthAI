@@ -1,10 +1,12 @@
 """Cấu hình tập trung: đường dẫn, nhãn, tham số. Sửa ở đây thay vì rải khắp các file."""
+import os
 from pathlib import Path
 
 SRC_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SRC_DIR.parent                 # .../MentalHealthAI (thư mục trong)
 DATA_DIR = PROJECT_DIR / "data"
 CLEAN_DIR = DATA_DIR / "clean"               # dữ liệu sau clean_data.py
+EXTRA_DIR = DATA_DIR / "extra"               # bộ dữ liệu bổ sung do fetch_datasets.py tải về
 REPORT_DIR = PROJECT_DIR / "reports"
 
 # Mô hình có thể nằm trong models/ của thư mục trong HOẶC thư mục ngoài (cấu trúc hiện tại của bạn).
@@ -19,7 +21,14 @@ MODEL_CANDIDATES = {
     "chitchat": [("bert_chitchat_v2",)],        # tùy chọn: bộ phân loại "trò chuyện thường ngày"
 }
 
-BASE_MODEL = "bert-base-uncased"
+# Mô hình nền khi HUẤN LUYỆN. Đổi bằng biến môi trường MHAI_BASE_MODEL hoặc tham số --base-model, ví dụ:
+#   roberta-base                     (tiếng Anh, thường nhỉnh hơn BERT)
+#   mental/mental-roberta-base       (tiền huấn luyện trên văn bản sức khỏe tâm lý; cần xin quyền trên Hugging Face)
+#   xlm-roberta-base                 (đa ngữ: phân tích trực tiếp tiếng Việt, không cần bước dịch)
+# Checkpoint mới ghi lại mô hình nền trong mhai_meta.json để lúc suy luận dùng đúng tokenizer.
+BASE_MODEL = os.getenv("MHAI_BASE_MODEL", "bert-base-uncased")
+LEGACY_BASE_MODEL = "bert-base-uncased"      # các checkpoint cũ (không có mhai_meta.json)
+MODEL_META_FILE = "mhai_meta.json"
 MAX_LEN = {"stress": 256, "emotion": 128, "depression": 256, "chitchat": 64}
 # Ước lượng ~1,25 token/từ => cửa sổ từ nhỏ hơn max_length để không bị cắt.
 WINDOW_WORDS = {"stress": 170, "emotion": 85, "depression": 170, "chitchat": 40}
@@ -42,6 +51,11 @@ BOT_NAME = "MentalHealthAI"
 # Mức "quên" khi gộp nhiều câu: câu mới nhất có trọng số 1, câu liền trước = decay, trước nữa = decay^2...
 RECENCY_DECAY = 0.4
 
+# Đánh giá cả cuộc trò chuyện (assessment.py). Trọng số HEURISTIC, cần kiểm chứng trước khi dùng để kết luận.
+CONCERN_WEIGHTS = {"stress": 0.25, "depression": 0.25, "emotion": 0.15, "domains": 0.25, "self_mood": 0.10}
+CONCERN_THRESHOLDS = [0.3, 0.5, 0.7]          # -> 4 mức: ổn định / chút căng thẳng / đáng chú ý / nặng nề
+DURATION_BONUS = 0.08
+
 # Bộ phân loại trò chuyện thường ngày: chỉ bỏ qua phân tích khi rất chắc chắn (tránh bỏ sót người cần giúp).
 #3CHITCHAT_THRESHOLD = 0.9
 
@@ -52,6 +66,26 @@ RECENCY_DECAY = 0.4
 
 DEFAULT_EMOTION_THRESHOLD = 0.25
 EMOTION_THRESHOLD_FILE = PROJECT_DIR / "models" / "emotion_thresholds.json"
+# Hiệu chỉnh xác suất (temperature) + ngưỡng thứ bậc cho Depression, do calibrate.py tạo từ tập dev.
+CALIBRATION_FILE = PROJECT_DIR / "models" / "calibration.json"
+
+# Tên hiển thị tiếng Việt: nhãn -> (biểu tượng, tên).
+EMOTION_VI = {
+    "admiration": ("🤩", "ngưỡng mộ"), "amusement": ("😄", "thích thú"), "anger": ("😠", "tức giận"),
+    "annoyance": ("😤", "khó chịu"), "approval": ("👍", "tán thành"), "caring": ("🤗", "quan tâm"),
+    "confusion": ("😕", "bối rối"), "curiosity": ("🧐", "tò mò"), "desire": ("✨", "mong muốn"),
+    "disappointment": ("😞", "thất vọng"), "disapproval": ("👎", "không đồng tình"), "disgust": ("🤢", "chán ghét"),
+    "embarrassment": ("😳", "ngượng ngùng"), "excitement": ("🎉", "hào hứng"), "fear": ("😨", "sợ hãi"),
+    "gratitude": ("🙏", "biết ơn"), "grief": ("🖤", "đau buồn"), "joy": ("😊", "vui vẻ"), "love": ("❤️", "yêu thương"),
+    "nervousness": ("😰", "lo lắng"), "optimism": ("🌤️", "lạc quan"), "pride": ("😌", "tự hào"),
+    "realization": ("💡", "nhận ra"), "relief": ("😮‍💨", "nhẹ nhõm"), "remorse": ("😔", "hối hận"),
+    "sadness": ("😢", "buồn bã"), "surprise": ("😮", "ngạc nhiên"), "neutral": ("😐", "trung tính"),
+}
+POSITIVE_EMOTIONS = {"admiration", "amusement", "approval", "caring", "excitement", "gratitude", "joy", "love",
+                     "optimism", "pride", "relief"}
+NEGATIVE_EMOTIONS = {"anger", "annoyance", "disappointment", "disapproval", "disgust", "embarrassment", "fear",
+                     "grief", "nervousness", "remorse", "sadness"}
+DEPRESSION_VI = {"minimum": "Rất ít", "mild": "Nhẹ", "moderate": "Vừa", "severe": "Nặng"}
 
 # Nguồn lực hỗ trợ hiển thị khi phát hiện nguy cơ. HÃY XÁC MINH LẠI trước khi demo/nộp.
 SUPPORT_RESOURCES = [

@@ -4,18 +4,26 @@
 Ngưỡng riêng chỉ áp cho cảm xúc có >= 20 mẫu dương trên dev; còn lại dùng ngưỡng chung.
 analyze.py tự đọc tệp này.
 """
+import argparse
 import json
 
 import numpy as np
+import pandas as pd
 
 import config
 import metrics
 import modeling
-from datasets_io import load_split
+from datasets_io import load_extra, load_split, resolve_extra
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--extra", default="", help="chọn ngưỡng trên dev GỘP với dev của các bộ bổ sung")
+    a = ap.parse_args()
     dev = load_split("emotion", "dev")
+    extra = resolve_extra(a.extra)
+    if extra:
+        dev = pd.concat([dev, load_extra("emotion", "dev", extra)], ignore_index=True)
     y = np.array(dev["labels"].tolist())
     tok, model = modeling.load(config.find_model("emotion"))
     probs = modeling.predict_probs(tok, model, dev["text"].tolist(), config.MAX_LEN["emotion"], multilabel=True)

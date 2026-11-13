@@ -9,3 +9,5 @@ matplotlib
 streamlit
 anthropic        # tùy chọn: bật tầng LLM (cần ANTHROPIC_API_KEY)
 pytest           # chạy tests/
+sentencepiece    # tokenizer của mô hình dịch Opus-MT / VinAI (translator.py)
+sacremoses

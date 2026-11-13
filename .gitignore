@@ -10,6 +10,7 @@ tmp_trainer/
 # mô hình (đưa lên Hugging Face, không đưa lên GitHub) - chỉ giữ file ngưỡng cảm xúc
 models/*
 !models/emotion_thresholds.json
+!models/calibration.json
 
 # dữ liệu (có điều khoản riêng) - chỉ giữ data/README.md
 data/*

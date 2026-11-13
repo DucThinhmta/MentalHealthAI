@@ -3,6 +3,7 @@ import json
 
 import numpy as np
 
+import calibration
 import config
 import modeling
 
@@ -75,8 +76,25 @@ def _message_probs(text):
     if text not in _msg_cache:
         if len(_msg_cache) > 512:
             _msg_cache.clear()
-        _msg_cache[text] = (stress_probs(text), depression_probs(text))
+        temp = _calibration().get("temperature", {})
+        _msg_cache[text] = (calibration.apply_temperature(stress_probs(text), temp.get("stress")),
+                            calibration.apply_temperature(depression_probs(text), temp.get("depression")))
     return _msg_cache[text]
+
+
+def _calibration():
+    """Tham số hiệu chỉnh từ calibrate.py (đọc một lần); {} nếu chưa có -> hành vi như bản cũ."""
+    if "calibration" not in _cache:
+        _cache["calibration"] = calibration.load()
+    return _cache["calibration"]
+
+
+def depression_level(probs):
+    """Chỉ số mức độ từ phân phối 4 lớp: ngưỡng thứ bậc nếu đã hiệu chỉnh, ngược lại argmax."""
+    cuts = _calibration().get("depression_cuts")
+    if cuts:
+        return int(calibration.decode_ordinal(calibration.expected_level(probs), cuts))
+    return int(np.argmax(probs))
 
 
 def recency_weights(n, decay):
@@ -106,7 +124,7 @@ def analyze_conversation(user_messages, window=5, decay=None):
     sp = sum(wi * p[0] for wi, p in zip(w, per_msg))
     dp = sum(wi * p[1] for wi, p in zip(w, per_msg))
     latest_sp, latest_dp = per_msg[-1]
-    k_s, k_d = int(sp.argmax()), int(dp.argmax())
+    k_s, k_d = int(sp.argmax()), depression_level(dp)
     return {
         "stress": config.STRESS_YES if k_s == 1 else config.STRESS_NO,
         "stress_confidence": float(sp[k_s]),
@@ -116,7 +134,8 @@ def analyze_conversation(user_messages, window=5, decay=None):
         "depression": config.DEPRESSION_LABELS[k_d],
         "depression_confidence": float(dp[k_d]),
         "depression_probs": {l: float(p) for l, p in zip(config.DEPRESSION_LABELS, dp)},
-        "latest_depression": config.DEPRESSION_LABELS[int(latest_dp.argmax())],
+        "depression_score": float(calibration.expected_level(dp)),      # điểm thứ bậc 0 (rất ít) .. 3 (nặng)
+        "latest_depression": config.DEPRESSION_LABELS[depression_level(latest_dp)],
         "n_messages_used": len(recent),
     }
 
