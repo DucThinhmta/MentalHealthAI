@@ -130,3 +130,16 @@ def test_runtime_without_translator_falls_back_to_untranslated(monkeypatch):
     sess = pipeline.Session()
     "".join(pipeline.run_turn("minh met moi qua", sess, use_llm=False, rng=random.Random(0)).chunks)
     assert not sess.entries[0]["model_ok"] and seen == ["minh met moi qua"]  # tiếng Việt không dấu cũng được nhận ra
+
+
+def test_rejected_translations_are_dropped_not_written_as_empty_rows(data_dirs):
+    found = td.sources()
+    td.append_cache("en", "vi", [("I am so stressed", "Mình căng thẳng quá"), ("Nice day today", "")], "test")
+    td.append_cache("vi", "en", [("vui quá", "so happy")], "test")
+    assert td.write_outputs(found) == 0                                    # không câu nào "thiếu": câu hỏng đã được xử lý
+    assert td.REJECTED[0] == 1
+    vi = datasets_io.load_translated("stress", "train", lang="vi")
+    assert list(vi["text"]) == ["Mình căng thẳng quá"] and list(vi["original_text"]) == ["I am so stressed"]
+    assert td.pending(found) == {}                                         # câu hỏng không bị dịch lại mỗi lần chạy
+    raw = pd.read_csv(data_dirs / "translated" / "stress_core_train.vi.csv", keep_default_na=False)
+    assert (raw["text"].str.strip() != "").all()

@@ -77,7 +77,8 @@ def load_translated(task, split, names=("core",), lang=None):
         for lg in ([lang] if lang else ["vi", "en"]):
             path = tdir / f"{task}_{n}_{split}.{lg}.csv"
             if path.exists():
-                df = pd.read_csv(path)
+                df = pd.read_csv(path, keep_default_na=False)
+                df = df[df["text"].astype(str).str.strip() != ""].copy()      # phòng thủ: không bao giờ nạp câu rỗng
                 df["text"] = df["text"].astype(str)
                 df["source"] = f"{n}:mt-{lg}"
                 if task == "emotion":

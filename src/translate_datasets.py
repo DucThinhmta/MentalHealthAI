@@ -29,6 +29,7 @@ import datasets_io
 OUT_DIR = config.DATA_DIR / "translated"
 CACHE_DIR = OUT_DIR / "cache"
 BATCH_STATE = OUT_DIR / "claude_batches.json"
+REJECTED = [0]                          # số câu có bản dịch bị loại (rỗng) ở lần write_outputs gần nhất
 TASKS = ("stress", "depression", "emotion")
 SPLITS = ("train", "dev", "test")
 # Giá Claude API (USD / 1 triệu token, chưa giảm giá batch), xem bảng giá chính thức trước khi chạy.
@@ -102,6 +103,7 @@ def write_outputs(found, limit=None):
     """Ghi các tệp đã dịch từ bộ nhớ đệm; trả về số câu còn thiếu bản dịch."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     missing_total = 0
+    REJECTED[0] = 0
     caches = {}
     for task, name, split, lang, df in found:
         tgt = target(lang)
@@ -109,10 +111,12 @@ def write_outputs(found, limit=None):
         df = df.head(limit) if limit else df
         tr = df["text"].map(lambda t: cache.get(_key(t)))
         missing_total += int(tr.isna().sum())
-        out = df.loc[tr.notna()].copy()
+        usable = tr.notna() & (tr.fillna("").str.strip() != "")          # "" = bản dịch bị bộ lọc chất lượng loại
+        REJECTED[0] += int((tr.notna() & ~usable).sum())
+        out = df.loc[usable].copy()
         if out.empty:
             continue
-        out["original_text"], out["text"] = out["text"], tr[tr.notna()]
+        out["original_text"], out["text"] = out["text"], tr[usable]
         out["lang"], out["translated_from"] = tgt, lang
         cols = [c for c in out.columns if c != "labels"]                 # 'labels' là cột tính lại khi đọc
         out[cols].to_csv(OUT_DIR / f"{task}_{name}_{split}.{tgt}.csv", index=False, encoding="utf-8")
@@ -296,7 +300,7 @@ def main():
             print("Khi batch xong (thường dưới 1 giờ): python src/translate_datasets.py --engine claude --collect")
     if a.engine or a.collect:
         left = write_outputs(found, a.limit)
-        print(f"Đã ghi vào {OUT_DIR}. Còn {left} câu chưa có bản dịch.")
+        print(f"Đã ghi vào {OUT_DIR}. Còn {left} câu chưa có bản dịch; {REJECTED[0]} câu bị loại vì bản dịch hỏng.")
 
 
 if __name__ == "__main__":
