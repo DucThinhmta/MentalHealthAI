@@ -143,6 +143,7 @@ Khi chạy ứng dụng mà không có API key, nếu đã tải mô hình dịc
 - Trải nghiệm như một cuộc trò chuyện bình thường: **không bao giờ bị chốt**. Bot không "kết luận" và ô nhập luôn mở; **khung bên phải cập nhật trực tiếp**
   sau mỗi tin nhắn (kể cả trong lúc bot đang soạn phản hồi), hiện chỉ số ngay từ tin đầu kèm **độ tin cậy** (thấp/vừa/cao) và diễn biến theo lượt. Nút *Xem tổng kết*
   luôn có ở thanh bên nếu người dùng muốn.
+- **Bot luôn trả lời 100% bằng tiếng Việt**, kể cả khi người dùng viết tiếng Anh (`config.REPLY_LANGUAGE`, đặt biến môi trường `MHAI_REPLY_LANG=auto` nếu muốn bot theo ngôn ngữ người dùng). **Phần phân tích không đổi:** tin nhắn tiếng Việt vẫn được dịch sang tiếng Anh rồi mới chạy 3 mô hình (tiếng Anh được phân tích nguyên văn).
 - Có `ANTHROPIC_API_KEY`: LLM trả lời theo kiểu trò chuyện tự nhiên, hiện dần từng chữ, nhớ khoảng 20 lượt gần nhất. Tùy chọn `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (mặc định `low`).
 - Không có khóa: phản hồi theo luật, cùng ngôn ngữ với người dùng, không lặp câu, trả lời thật thà các câu hỏi về bot, hỏi chẩn đoán, hỏi thuốc, hỏi về bí mật (`intents.py`).
 - Bài tập nhỏ có hướng dẫn (`coping.py`: thở hộp, tiếp đất 5-4-3-2-1, một việc nhỏ 10 phút, viết ra điều lo, ghi lại suy nghĩ...), nhật ký tâm trạng nhiều ngày (`diary.py`).

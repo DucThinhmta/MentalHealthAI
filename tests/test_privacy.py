@@ -83,8 +83,12 @@ def test_local_resources_appear_in_the_crisis_message(monkeypatch):
     assert "Phòng tư vấn A: tuvan@truong.edu.vn (T2-T6)" in safety.crisis_message("Tôi muốn chết")
 
 
-def test_crisis_message_follows_the_users_language():
-    vi, en = safety.crisis_message("Tôi muốn chết"), safety.crisis_message("I want to die")
+def test_crisis_message_is_always_vietnamese_by_default_and_follows_the_user_in_auto_mode(monkeypatch):
+    vi, en_in = safety.crisis_message("Tôi muốn chết"), safety.crisis_message("I want to die")
     assert "Mình rất tiếc" in vi and "emergency number" not in vi
+    assert en_in == safety.crisis_message("Tôi muốn chết")                          # cùng một thông điệp tiếng Việt
+    assert "Mình rất tiếc" in safety.crisis_message("toi muon chet")
+    monkeypatch.setattr(config, "REPLY_LANGUAGE", "auto")
+    en = safety.crisis_message("I want to die")
     assert "I'm really sorry" in en and "Immediate danger" in en and "Mình" not in en
-    assert "I'm really sorry" in safety.crisis_message("toi muon chet") or "Mình rất tiếc" in safety.crisis_message("toi muon chet")
+    assert "Mình rất tiếc" in safety.crisis_message("Tôi muốn chết")

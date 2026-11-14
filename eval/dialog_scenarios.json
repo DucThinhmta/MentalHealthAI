@@ -734,6 +734,8 @@
     [
      "contains_any",
      [
+      "bác sĩ",
+      "dược sĩ",
       "doctor",
       "pharmacist"
      ]
@@ -771,6 +773,8 @@
     [
      "contains_any",
      [
+      "bác sĩ",
+      "dược sĩ",
       "doctor",
       "pharmacist"
      ]
@@ -989,7 +993,9 @@
      [
       "stress",
       "listen",
-      "emotions"
+      "emotions",
+      "lắng nghe",
+      "kể mình nghe"
      ]
     ]
    ]
@@ -1188,7 +1194,10 @@
      [
       "not able",
       "not sure",
-      "outside"
+      "outside",
+      "chưa trả lời",
+      "chưa hiểu",
+      "ngoài khả năng"
      ]
     ],
     [
@@ -2057,7 +2066,10 @@
       "session",
       "anonymous",
       "can't promise",
-      "cannot promise"
+      "cannot promise",
+      "phiên này",
+      "ẩn danh",
+      "không thể hứa"
      ]
     ]
    ]
@@ -2124,7 +2136,8 @@
     [
      "contains_any",
      [
-      "sorry"
+      "sorry",
+      "xin lỗi"
      ]
     ],
     "no_crisis"
@@ -2172,7 +2185,9 @@
       "can't",
       "cannot",
       "not a therapist",
-      "not able"
+      "not able",
+      "không thể đóng vai",
+      "không phải bác sĩ"
      ]
     ]
    ]
@@ -2325,7 +2340,9 @@
      [
       "try",
       "exercise",
-      "small"
+      "small",
+      "thử",
+      "bài tập"
      ]
     ],
     [

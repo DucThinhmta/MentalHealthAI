@@ -71,7 +71,9 @@ def test_crisis_message_has_resources_and_language():
     vi = safety.crisis_message("Tôi muốn chết")
     assert "115" in vi and "113" in vi and "findahelpline" in vi
     assert "emergency number" not in vi
-    assert "emergency number" in safety.crisis_message("I want to die")
+    assert "emergency number" not in safety.crisis_message("I want to die")           # luôn tiếng Việt, kể cả khi gõ tiếng Anh
+    assert "Mình rất tiếc" in safety.crisis_message("I want to die") and "115" in safety.crisis_message("I want to die")
+    assert "emergency number" in safety.crisis_message("I want to die", lang="en")     # vẫn có thể yêu cầu rõ ràng bằng tiếng Anh
 
 
 # ---------- response_generator ----------
@@ -112,8 +114,8 @@ def test_llm_used_when_available(monkeypatch):
 def test_elevated_adds_note_and_topic_follows_latest_message():
     out = rg.generate_reply(_result(depression="severe"), "I can't sleep at night", use_llm=False,
                             rng=random.Random(1))
-    assert out["safety_level"] == "elevated" and "professional" in out["reply"]
-    assert "sleep" in out["reply"]
+    assert out["safety_level"] == "elevated" and "chuyên gia" in out["reply"]          # tin nhắn tiếng Anh, phản hồi tiếng Việt
+    assert "ngủ" in out["reply"]
     vi = rg.generate_reply(_result(depression="severe"), "Mình mất ngủ cả tuần nay", use_llm=False,
                            rng=random.Random(1))
     assert "chuyên gia" in vi["reply"] and "ngủ" in vi["reply"]
@@ -121,7 +123,7 @@ def test_elevated_adds_note_and_topic_follows_latest_message():
 
 def test_positive_and_neutral_paths():
     pos = rg.generate_reply(_result(False, emotions=[("joy", 0.9)]), "Great day", use_llm=False)
-    assert pos["reply"] in rg._T["en"]["positive"]
+    assert pos["reply"] in rg._T["vi"]["positive"]
     neu = rg.generate_reply(_result(False), "ok", use_llm=False)
     assert neu["source"] == "rules" and neu["reply"]
 

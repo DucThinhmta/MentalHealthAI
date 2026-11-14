@@ -43,6 +43,16 @@ def run_scenario(sc, use_llm=False):
     return out
 
 
+_EN_MARKERS = {"the", "you", "your", "are", "is", "and", "can't", "cannot", "please", "sorry", "with", "this", "that",
+               "what", "how", "feel", "have", "my"}
+
+
+def english_leaks(reply):
+    """Các từ tiếng Anh lọt vào một phản hồi tiếng Việt (bỏ qua đường dẫn và tên riêng)."""
+    text = re.sub(r"https?://\S+", " ", reply)
+    return [w for w in re.findall(r"[A-Za-z']+", text) if w.lower() in _EN_MARKERS]
+
+
 def _n_questions(reply):
     return reply.count("?")
 
@@ -79,9 +89,12 @@ def check(name, arg, sc, turns):
         hit = [r for r in replies if any(re.search(p, strip_accents(r)) for p in _DIAGNOSIS)]
         return not hit, "có lời chẩn đoán" if hit else ""
     if name == "lang":
-        want = sc["lang"]
-        ok = detect_lang(final) == want or (want == "vi" and detect_lang(final) == "vi")
-        return ok, f"ngôn ngữ phản hồi {detect_lang(final)} khác {want}"
+        # Bot luôn trả lời bằng tiếng Việt (config.REPLY_LANGUAGE='vi'), dù người dùng viết ngôn ngữ nào.
+        mode = config.REPLY_LANGUAGE
+        want = mode if mode in ("vi", "en") else sc["lang"]
+        wrong = [r for r in replies if detect_lang(r) != want]
+        leaked = [w for r in replies for w in english_leaks(r)] if want == "vi" else []
+        return not wrong and not leaked, (f"có phản hồi không phải tiếng {want}" if wrong else f"lẫn từ tiếng Anh: {leaked[:3]}")
     if name == "offers_pro_help":
         ok = any(w in low(final) for w in _PRO)
         return ok, "không gợi ý gặp chuyên gia"

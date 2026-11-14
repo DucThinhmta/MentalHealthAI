@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pytest
 
+import config
 import coping
 import evaluate_dialogs as ed
 import intents
@@ -151,13 +152,54 @@ def test_looks_like_question(text, history, expected):
     assert rg.looks_like_question(text, history) is expected
 
 
-def test_conversation_language_uses_context_for_short_unaccented_messages():
+def test_reply_language_is_always_vietnamese_by_default():
+    for text in ("hello there", "I can't focus and I feel tired", "chac do thi cu", "Mình mệt", "xyz abc"):
+        assert rg.conversation_lang(text, None) == "vi"
+
+
+def test_conversation_language_uses_context_in_auto_mode(monkeypatch):
+    monkeypatch.setattr(config, "REPLY_LANGUAGE", "auto")
     vi_hist = [{"role": "user", "content": "Mình mất ngủ mấy đêm nay rồi"}, {"role": "assistant", "content": "Ừ."},
                {"role": "user", "content": "xyz abc"}]
     assert rg.conversation_lang("xyz abc", vi_hist) == "vi"
     assert rg.conversation_lang("I can't focus and I feel tired", vi_hist) == "en"     # tiếng Anh rõ ràng thì theo câu hiện tại
     assert rg.conversation_lang("hello there", None) == "en"
     assert rg.conversation_lang("chac do thi cu", None) == "vi"
+
+
+def test_every_scenario_reply_is_100_percent_vietnamese(results):
+    """Kể cả khi người dùng viết tiếng Anh: không câu trả lời nào được là tiếng Anh hay lẫn từ tiếng Anh."""
+    for r in results:
+        for t in r["turns"]:
+            assert rg.detect_lang(t["reply"]) == "vi" and not ed.english_leaks(t["reply"]), (r["id"], t["reply"])
+    english_inputs = [r for r in results if any(rg.detect_lang(t["user"]) == "en" for t in r["turns"])]
+    assert len(english_inputs) >= 15                                           # bộ kịch bản có đủ tin nhắn tiếng Anh để phép thử có nghĩa
+
+
+def test_llm_persona_demands_vietnamese_replies(monkeypatch):
+    import llm_client
+    assert "LUÔN trả lời bằng tiếng Việt" in llm_client.persona() and "{lang_rule}" not in llm_client.persona()
+    monkeypatch.setattr(config, "REPLY_LANGUAGE", "auto")
+    assert "LUÔN trả lời bằng tiếng Việt" not in llm_client.persona() and "ngôn ngữ người dùng" in llm_client.persona()
+    monkeypatch.setattr(config, "REPLY_LANGUAGE", "en")
+    assert "Reply in English" in llm_client.persona()
+    system = llm_client._system(None)
+    assert "persona" not in system[0]["text"] and system[0]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_analysis_translation_path_is_independent_of_the_reply_language(monkeypatch):
+    """Phản hồi luôn tiếng Việt, nhưng tin nhắn tiếng Việt vẫn được DỊCH SANG TIẾNG ANH trước khi phân tích."""
+    import pipeline
+    import translator
+    seen = []
+    monkeypatch.setattr(pipeline, "_analyze", lambda text: (seen.append(text) or {
+        "stress": config.STRESS_YES, "stress_probability": 0.8, "emotions": [], "depression": "mild",
+        "depression_probs": {"minimum": .2, "mild": .5, "moderate": .2, "severe": .1}, "n_messages_used": 1}))
+    monkeypatch.setattr(translator, "runtime_vi2en", lambda t: "I have not slept all week")
+    monkeypatch.setattr(pipeline, "_models_present", lambda: True)
+    sess = pipeline.Session()
+    reply = "".join(pipeline.run_turn("Mình mất ngủ cả tuần nay", sess, use_llm=False, rng=random.Random(0)).chunks)
+    assert seen == ["I have not slept all week"] and rg.detect_lang(reply) == "vi" and sess.entries[0]["translated"]
 
 
 def test_no_summary_offer_text_remains_in_rule_replies():

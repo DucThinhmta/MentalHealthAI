@@ -186,10 +186,18 @@ _REPLIES = {
 }
 
 
-def reply(st: "SmallTalk", bot_name: str = None) -> str:
-    """Ghép câu trả lời cho một hoặc nhiều ý xã giao trong cùng một tin nhắn."""
+def _reply_lang(lang, fallback):
+    """Ngôn ngữ phản hồi: tham số rõ ràng > cài đặt cố định (config.REPLY_LANGUAGE) > ngôn ngữ của người dùng."""
+    if lang:
+        return lang
+    mode = getattr(config, "REPLY_LANGUAGE", "vi")
+    return mode if mode in ("vi", "en") else fallback
+
+
+def reply(st: "SmallTalk", bot_name: str = None, lang: str = None) -> str:
+    """Ghép câu trả lời cho một hoặc nhiều ý xã giao trong cùng một tin nhắn (mặc định luôn tiếng Việt)."""
     bot = bot_name or config.BOT_NAME
-    r = _REPLIES[st.lang]
+    r = _REPLIES[_reply_lang(lang, st.lang)]
     multi = len(st.intents) > 1
     parts = [r["greeting_short" if (i == "greeting" and multi) else i].format(bot=bot) for i in st.intents]
     ask_feelings = any(i in st.intents for i in ("greeting", "how_are_you", "ask_name", "capabilities", "introduce",
@@ -208,9 +216,9 @@ _GENERIC = {
 }
 
 
-def generic_reply(text: str, rng=None) -> str:
+def generic_reply(text: str, rng=None, lang: str = None) -> str:
     """Câu đáp chung cho tin nhắn trò chuyện thường ngày mà luật không có mẫu riêng."""
     import random
     from textutils import looks_vietnamese
-    lang = "vi" if looks_vietnamese(text) else "en"
+    lang = _reply_lang(lang, "vi" if looks_vietnamese(text) else "en")
     return (rng or random).choice(_GENERIC[lang])

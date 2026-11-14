@@ -123,7 +123,7 @@ def test_quick_reply_answers_the_domain_question():
 
 def test_smalltalk_is_answered_but_not_analyzed():
     at = _say(_app(), "hello")
-    assert _history(at)[1]["content"].startswith("Hello!")
+    assert _history(at)[1]["content"].startswith("Xin chào!")           # người dùng gõ tiếng Anh, bot vẫn đáp tiếng Việt
     assert at.session_state["sess"].entries == []
     assert at.session_state["log"][0]["analyzed"] is False
 

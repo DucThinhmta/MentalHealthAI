@@ -28,7 +28,7 @@ buồn, mất ngủ; có khi họ chỉ muốn tán gẫu. Việc của bạn l�
 chứ không phải như một tổng đài viên hay một bảng câu hỏi.
 
 Cách nói chuyện
-- Nói bằng ngôn ngữ người dùng đang dùng. Với tiếng Việt, mặc định xưng "mình" và gọi "bạn"; nếu họ tự xưng \
+- {lang_rule} Mặc định xưng "mình" và gọi "bạn"; nếu họ tự xưng \
 em/anh/chị/tớ/cậu thì xưng hô lại cho hợp. Viết như nhắn tin: câu ngắn, từ ngữ đời thường, được dùng "ừ", "à", "nhỉ", \
 "nha" khi tự nhiên. Không dùng gạch đầu dòng, tiêu đề hay in đậm.
 - Độ dài đi theo người dùng: họ nhắn một câu thì đáp một hai câu; họ kể dài thì có thể đáp dài hơn, nhưng hiếm khi \
@@ -75,6 +75,18 @@ hãy lồng MỘT câu hỏi tự nhiên về điều này vào cuối câu tr�
 vừa nói trước. Nếu họ vừa hỏi bạn một câu, đang rất xúc động, hoặc vừa kể điều quan trọng thì bỏ qua, để lượt sau hỏi."""
 
 _NO_ANALYSIS = "- Lượt này là câu xã giao/trò chuyện thường ngày nên không chạy phân tích."
+
+
+LANG_RULE_VI = ("LUÔN trả lời bằng tiếng Việt, dù người dùng viết bằng ngôn ngữ nào: nếu họ viết tiếng Anh thì vẫn hiểu "
+                "bình thường nhưng đáp bằng tiếng Việt.")
+LANG_RULE_EN = "Reply in English, whatever language the user writes in."
+LANG_RULE_AUTO = "Nói bằng ngôn ngữ người dùng đang dùng (tiếng Việt là mặc định)."
+
+
+def persona():
+    """Prompt nhân vật, kèm quy tắc ngôn ngữ theo config.REPLY_LANGUAGE (mặc định: luôn tiếng Việt)."""
+    rule = {"vi": LANG_RULE_VI, "en": LANG_RULE_EN}.get(getattr(config, "REPLY_LANGUAGE", "vi"), LANG_RULE_AUTO)
+    return PERSONA_PROMPT.format(bot=config.BOT_NAME, lang_rule=rule)
 
 
 def is_available() -> bool:
@@ -126,7 +138,7 @@ def _profile_signals(p):
 def _system(info, ask_domain=None):
     """Khối nhân vật cố định (cache được) + ghi chú thay đổi theo lượt."""
     blocks = [
-        {"type": "text", "text": PERSONA_PROMPT.format(bot=config.BOT_NAME), "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": persona(), "cache_control": {"type": "ephemeral"}},
         {"type": "text", "text": SIGNALS_PROMPT.format(signals=_signals(info))},
     ]
     if ask_domain:
@@ -285,7 +297,7 @@ def stream_summary(profile: dict, history: list):
     transcript = "\n".join(f"{'Người dùng' if m['role'] == 'user' else 'Bot'}: {m['content']}"
                            for m in history[-MAX_HISTORY_MESSAGES:])
     kwargs = dict(model=MODEL, max_tokens=MAX_TOKENS,
-                  system=[{"type": "text", "text": PERSONA_PROMPT.format(bot=config.BOT_NAME),
+                  system=[{"type": "text", "text": persona(),
                            "cache_control": {"type": "ephemeral"}},
                           {"type": "text", "text": SUMMARY_PROMPT.format(signals=_profile_signals(profile),
                                                                          level=level)}],

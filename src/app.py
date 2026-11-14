@@ -18,7 +18,7 @@ import llm_client
 import pipeline
 import privacy
 import study
-from textutils import detect_lang
+from textutils import detect_lang, reply_language
 
 st.set_page_config(page_title=config.BOT_NAME, page_icon="🌿", layout="wide")
 
@@ -538,7 +538,7 @@ trong ngày. Trò chuyện càng nhiều, mình càng hiểu bạn và gợi ý 
     if history and history[-1]["role"] == "assistant":
         dom = A.asked_domain(history[-1]["content"])
         if dom and dom not in profile_now["domains"]:
-            lang = detect_lang(next((m["content"] for m in reversed(history) if m["role"] == "user"), ""))
+            lang = reply_language(next((m["content"] for m in reversed(history) if m["role"] == "user"), ""), history)
             options = A.DOMAINS[dom]["quick"].get(lang, A.DOMAINS[dom]["quick"]["vi"])
             cols = st.columns(len(options))
             for i, (label, pol) in enumerate(options):

@@ -7,7 +7,7 @@ chấp nhận một số cảnh báo thừa.
 import re
 
 import config
-from textutils import detect_lang, strip_accents
+from textutils import reply_language, strip_accents
 
 # Mẫu viết trên văn bản ĐÃ BỎ DẤU (xem _normalize), nên dùng được cả khi gõ không dấu.
 # Mỗi mẫu là (regex, cờ). Cờ 'hyper' = dễ gặp trong cách nói ẩn dụ ("buồn cười muốn chết") nên có thêm bước loại trừ.
@@ -158,11 +158,11 @@ def assess_safety(latest_message: str, result: dict | None = None) -> str:
     return "none"
 
 
-def crisis_message(user_text: str = "", minor: bool = False) -> str:
+def crisis_message(user_text: str = "", minor: bool = False, lang: str = None) -> str:
     """Thông điệp cố định (không dùng LLM) khi phát hiện nguy cơ; theo ngôn ngữ của người dùng.
 
     minor=True: thêm kênh dành cho người dưới 18 tuổi (111)."""
-    if detect_lang(user_text) == "en":
+    if (lang or reply_language(user_text)) == "en":
         res_en = "\n".join(f"- {r}" for r in config.support_resources(minor, "en"))
         return (
             "I'm really sorry you're carrying this much right now, and I'm glad you told me. "

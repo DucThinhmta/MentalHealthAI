@@ -13,7 +13,7 @@ import intents
 import llm_client
 import safety
 import smalltalk
-from textutils import detect_lang, strip_accents, word_pattern
+from textutils import detect_lang, reply_language, strip_accents, word_pattern
 
 # Từ khóa theo chủ đề (tiếng Anh + tiếng Việt không dấu). Khớp nguyên từ, không khớp chuỗi con.
 _TOPIC_WORDS = {
@@ -203,8 +203,6 @@ _BRIDGE = {"vi": ["Mình hỏi thêm một chút nhé:", "Cho mình hỏi thêm 
 _QUESTION_END = re.compile(r"\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)\s*[.!]*$")
 _NOT_A_QUESTION = re.compile(r"\b(?:khong|chang|chua) (?:biet|ro|hieu|nho|chac)\b")   # "không rõ vì sao" là câu trả lời
 _IMPERATIVE = re.compile(r"^(?:giai|tinh|dich|viet ho|lam ho|code|lap trinh|tim giup|tra cuu|solve|translate|write me)\b")
-_EN_WORDS = {"the", "a", "i", "you", "is", "am", "are", "to", "and", "of", "my", "me", "it", "in", "that", "this", "for",
-             "with", "have", "was", "so", "but", "not", "can", "do", "what", "how", "feel", "im"}
 _QUESTION_START = re.compile(r"^(?:tai sao|vi sao|lam sao|lam the nao|the nao|co phai|ban co|why|what|how|who|where|"
                              r"when|can you|could you|do you|are you|is it)\b")
 
@@ -225,16 +223,8 @@ def looks_like_question(text, history=None):
 
 
 def conversation_lang(text, history=None):
-    """Ngôn ngữ phản hồi: dựa vào câu hiện tại, và vào các tin trước khi câu hiện tại ngắn/không dấu khó đoán."""
-    if detect_lang(text) == "vi":
-        return "vi"
-    words = re.findall(r"[a-z']+", (text or "").lower())
-    if sum(1 for w in words if w in _EN_WORDS) >= 2:
-        return "en"
-    users = [m["content"] for m in history or [] if m.get("role") == "user"]
-    if users and users[-1] == text:
-        users = users[:-1]
-    return "vi" if any(detect_lang(m) == "vi" for m in users[-4:]) else "en"
+    """Ngôn ngữ phản hồi (xem textutils.reply_language): mặc định luôn tiếng Việt."""
+    return reply_language(text, history)
 
 
 _ACK = {"vi": ["Ừ, mình hiểu rồi.", "Mình nghe rồi nè.", "Cảm ơn bạn kể mình nghe."],
@@ -334,16 +324,17 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
 def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=None, intent=None, llm_on=False):
     """Phản hồi không dùng LLM -> (văn bản, nguồn)."""
     if small is not None:
-        reply = smalltalk.reply(small)
+        lang = conversation_lang(user_message, history)
+        reply = smalltalk.reply(small, lang=lang)
         used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant")
         earlier_user_turns = sum(1 for m in history or [] if m.get("role") == "user") - 1   # trừ tin nhắn hiện tại
         for key in ("_follow", "_follow_after_how"):         # đã hỏi thăm rồi, hoặc người dùng đã kể chuyện rồi: không hỏi lại như mới gặp
-            follow = smalltalk._REPLIES[small.lang][key]
+            follow = smalltalk._REPLIES[lang][key]
             if reply.endswith(follow) and reply != follow and (follow in used or earlier_user_turns >= 1):
                 reply = reply[: -len(follow)].rstrip()
         return reply, "smalltalk"
     if info is None:
-        return smalltalk.generic_reply(user_message, rng), "rules"
+        return smalltalk.generic_reply(user_message, rng, lang=conversation_lang(user_message, history)), "rules"
     return _rule_based(info, user_message, rng, history, latest, ask_domain, intent, llm_on), "rules"
 
 
@@ -360,7 +351,7 @@ def _safety_level(user_message, info, history, risk_hint=None):
         return "crisis"
     if level == "none" and risk_hint == "possible":
         level = "elevated"
-    note_lang = detect_lang(user_message)
+    note_lang = conversation_lang(user_message, history)
     if level == "elevated" and any(safety.elevated_note(note_lang) in m["content"]
                                    for m in history or [] if m.get("role") == "assistant"):
         level = "elevated_noted"                     # đã nhắc rồi thì không nhắc lại mỗi lượt
@@ -388,7 +379,7 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
     def chunks():
         if level == "crisis":
             meta["source"] = "safety"
-            yield safety.crisis_message(user_message, minor)
+            yield safety.crisis_message(user_message, minor, lang=conversation_lang(user_message, history))
             return
         got_text = False
         if use_llm and llm_client.is_available():
@@ -410,7 +401,7 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
                                               llm_on=use_llm and llm_client.is_available())
             yield reply
         if level == "elevated":
-            yield "\n\n" + safety.elevated_note(detect_lang(user_message))
+            yield "\n\n" + safety.elevated_note(conversation_lang(user_message, history))
 
     return meta, chunks()
 

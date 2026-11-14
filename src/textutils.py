@@ -33,6 +33,30 @@ def detect_lang(text: str) -> str:
     return "vi" if len(_VI_PLAIN.findall(strip_accents(text))) >= 2 else "en"
 
 
+_EN_WORDS = {"the", "a", "i", "you", "is", "am", "are", "to", "and", "of", "my", "me", "it", "in", "that", "this", "for",
+             "with", "have", "was", "so", "but", "not", "can", "do", "what", "how", "feel", "im"}
+
+
+def auto_language(text, history=None):
+    """Ngôn ngữ của người dùng: theo câu hiện tại; câu ngắn/không dấu khó đoán thì dựa vào các tin trước."""
+    if detect_lang(text) == "vi":
+        return "vi"
+    words = re.findall(r"[a-z']+", (text or "").lower())
+    if sum(1 for w in words if w in _EN_WORDS) >= 2:
+        return "en"
+    users = [m["content"] for m in history or [] if m.get("role") == "user"]
+    if users and users[-1] == text:
+        users = users[:-1]
+    return "vi" if any(detect_lang(m) == "vi" for m in users[-4:]) else "en"
+
+
+def reply_language(text="", history=None):
+    """Ngôn ngữ của câu trả lời của bot: cố định theo config.REPLY_LANGUAGE ('vi' mặc định), hoặc 'auto' = theo người dùng."""
+    import config
+    mode = getattr(config, "REPLY_LANGUAGE", "vi")
+    return mode if mode in ("vi", "en") else auto_language(text, history)
+
+
 def word_pattern(words):
     """Regex khớp nguyên từ (tránh 'work' khớp 'network', 'test' khớp 'latest')."""
     alternatives = "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))

@@ -49,6 +49,9 @@ EMOTION_LABELS = [
 MENTAL_HEALTH_EMOTIONS = ["fear", "nervousness", "sadness", "grief", "disappointment", "remorse", "anger"]
 
 BOT_NAME = "MentalHealthAI"
+# Ngôn ngữ của MỌI câu bot nói ra: "vi" (luôn tiếng Việt, mặc định) | "en" | "auto" (theo ngôn ngữ người dùng).
+# Phần PHÂN TÍCH không phụ thuộc cài đặt này: tin nhắn tiếng Việt vẫn được dịch sang tiếng Anh để chạy các mô hình.
+REPLY_LANGUAGE = os.getenv("MHAI_REPLY_LANG", "vi")
 # Mức "quên" khi gộp nhiều câu: câu mới nhất có trọng số 1, câu liền trước = decay, trước nữa = decay^2...
 RECENCY_DECAY = 0.4
 

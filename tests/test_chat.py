@@ -36,11 +36,26 @@ def test_detect_lang():
 
 
 # ---------- phản hồi theo luật ----------
-def test_rule_reply_matches_user_language():
+def test_rule_replies_are_vietnamese_even_when_the_user_writes_english():
     vi = rg.generate_reply(_result(), "Mình áp lực vì kỳ thi quá", use_llm=False, rng=random.Random(0))["reply"]
-    en = rg.generate_reply(_result(), "I am stressed about my exam", use_llm=False, rng=random.Random(0))["reply"]
+    en_in = rg.generate_reply(_result(), "I am stressed about my exam", use_llm=False, rng=random.Random(0))["reply"]
     assert detect_lang(vi) == "vi" and vi.endswith("?")
-    assert detect_lang(en) == "en" and en.endswith("?")
+    assert detect_lang(en_in) == "vi" and en_in.endswith("?")
+
+
+def test_auto_mode_still_follows_the_users_language(monkeypatch):
+    monkeypatch.setattr(config, "REPLY_LANGUAGE", "auto")
+    en = rg.generate_reply(_result(), "I am stressed about my exam", use_llm=False, rng=random.Random(0))["reply"]
+    vi = rg.generate_reply(_result(), "Mình áp lực vì kỳ thi quá", use_llm=False, rng=random.Random(0))["reply"]
+    assert detect_lang(en) == "en" and detect_lang(vi) == "vi"
+
+
+def test_english_input_is_analyzed_as_is_but_answered_in_vietnamese(fake_analyze):
+    sess = pipeline.Session()
+    turn = pipeline.run_turn("I am stressed about my exam", sess, use_llm=False)
+    reply = "".join(turn.chunks)
+    assert fake_analyze == ["I am stressed about my exam"] and detect_lang(reply) == "vi"      # phân tích bằng tiếng Anh
+    assert sess.entries[0]["lang"] == "en" and sess.entries[0]["model_ok"]                     # đầu vào là tiếng Anh, dùng điểm mô hình
 
 
 def test_rule_replies_do_not_repeat_within_a_conversation():
