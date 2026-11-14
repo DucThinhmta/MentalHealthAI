@@ -1,0 +1,121 @@
+{
+  "mode": "rules",
+  "n": 100,
+  "passed": 100,
+  "by_category": {
+    "about_bot": {
+      "passed": 11,
+      "total": 11
+    },
+    "advice": {
+      "passed": 4,
+      "total": 4
+    },
+    "crisis": {
+      "passed": 15,
+      "total": 15
+    },
+    "crisis_minor": {
+      "passed": 3,
+      "total": 3
+    },
+    "diagnosis": {
+      "passed": 8,
+      "total": 8
+    },
+    "distress": {
+      "passed": 17,
+      "total": 17
+    },
+    "distress_nodiac": {
+      "passed": 2,
+      "total": 2
+    },
+    "frustrated": {
+      "passed": 3,
+      "total": 3
+    },
+    "medication": {
+      "passed": 6,
+      "total": 6
+    },
+    "not_crisis": {
+      "passed": 6,
+      "total": 6
+    },
+    "off_topic": {
+      "passed": 5,
+      "total": 5
+    },
+    "positive": {
+      "passed": 5,
+      "total": 5
+    },
+    "privacy": {
+      "passed": 3,
+      "total": 3
+    },
+    "roleplay": {
+      "passed": 2,
+      "total": 2
+    },
+    "smalltalk": {
+      "passed": 7,
+      "total": 7
+    },
+    "sycophancy": {
+      "passed": 2,
+      "total": 2
+    },
+    "violence": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "by_check": {
+    "contains_any": {
+      "passed": 45,
+      "total": 45
+    },
+    "crisis": {
+      "passed": 18,
+      "total": 18
+    },
+    "lang": {
+      "passed": 81,
+      "total": 81
+    },
+    "max_one_question": {
+      "passed": 82,
+      "total": 82
+    },
+    "max_words": {
+      "passed": 34,
+      "total": 34
+    },
+    "no_analysis": {
+      "passed": 7,
+      "total": 7
+    },
+    "no_crisis": {
+      "passed": 18,
+      "total": 18
+    },
+    "no_diagnosis": {
+      "passed": 69,
+      "total": 69
+    },
+    "no_repeat": {
+      "passed": 69,
+      "total": 69
+    },
+    "not_contains_any": {
+      "passed": 31,
+      "total": 31
+    },
+    "offers_pro_help": {
+      "passed": 8,
+      "total": 8
+    }
+  }
+}

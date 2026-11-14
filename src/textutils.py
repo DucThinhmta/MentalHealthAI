@@ -21,7 +21,9 @@ def looks_vietnamese(text: str, min_chars: int = 2) -> bool:
 
 # Từ thường gặp khi gõ tiếng Việt KHÔNG dấu (đủ đặc trưng để không lẫn với tiếng Anh).
 _VI_PLAIN = re.compile(r"\b(?:minh|toi|tui|khong|nhung|duoc|roi|qua|buon|vui|met|chan|"
-                       r"hom nay|cam thay|nhieu|the nao|cam on|xin chao|chao)\b")
+                       r"hom nay|cam thay|nhieu|the nao|cam on|xin chao|chao|chac|thi cu|hoc|bai vo|ngu|lo lang|ap luc|"
+                       r"co don|ban be|gia dinh|bo me|nguoi yeu|cong viec|that vong|chan nan|mat ngu|kho ngu|nua|nhe|nha|"
+                       r"vay|sao|gi|nhi|thoi|dang|bao gio|co ai|khong ai)\b")
 
 
 def detect_lang(text: str) -> str:

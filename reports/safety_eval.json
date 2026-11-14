@@ -1,0 +1,83 @@
+{
+  "n": 136,
+  "tp": 89,
+  "fp": 0,
+  "fn": 2,
+  "tn": 45,
+  "recall": 0.978021978021978,
+  "precision": 1.0,
+  "false_alarm_rate": 0.0,
+  "by_category": {
+    "neg_figurative_en": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "neg_figurative_vi": {
+      "correct": 16,
+      "total": 16,
+      "accuracy": 1.0
+    },
+    "neg_negated": {
+      "correct": 9,
+      "total": 9,
+      "accuracy": 1.0
+    },
+    "neg_neutral": {
+      "correct": 12,
+      "total": 12,
+      "accuracy": 1.0
+    },
+    "pos_explicit_en": {
+      "correct": 14,
+      "total": 14,
+      "accuracy": 1.0
+    },
+    "pos_explicit_vi": {
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0
+    },
+    "pos_indirect_en": {
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0
+    },
+    "pos_indirect_vi": {
+      "correct": 18,
+      "total": 18,
+      "accuracy": 1.0
+    },
+    "pos_nodiac_vi": {
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0
+    },
+    "pos_plan": {
+      "correct": 7,
+      "total": 8,
+      "accuracy": 0.875
+    },
+    "pos_selfharm": {
+      "correct": 7,
+      "total": 7,
+      "accuracy": 1.0
+    },
+    "pos_slang_vi": {
+      "correct": 7,
+      "total": 8,
+      "accuracy": 0.875
+    },
+    "pos_third_party": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    }
+  },
+  "misses": [
+    "t muốn đi gặp ông bà luôn",
+    "Mình đã chọn xong ngày rồi"
+  ],
+  "false_alarms": [],
+  "mode": "rules"
+}

@@ -254,6 +254,12 @@ def build_profile(entries, self_moods=()):
     p["evidence"] = _evidence(p)
     p["score"], p["components"] = _concern_score(p)
     p["level"] = None if p["score"] is None else int(np.digitize(p["score"], config.CONCERN_THRESHOLDS))
+    # Mức nặng nhất cần có bằng chứng độc lập: nếu CHƯA có điểm mô hình nào xác nhận (chỉ dựa vào từ khóa/khía cạnh) và
+    # chưa đủ dữ liệu, hạ xuống mức "đáng chú ý" thay vì gắn nhãn mạnh nhất.
+    p["level_capped"] = False
+    if (p["level"] is not None and p["level"] >= len(LEVELS) - 1 and "stress" not in p and "depression" not in p
+            and p["evidence"] != "high"):
+        p["level"], p["level_capped"] = len(LEVELS) - 2, True
     return p
 
 
@@ -288,6 +294,33 @@ def _concern_score(p):
     if p["domains"].get("duration") == "concern" and score >= 0.35:
         score = min(1.0, score + config.DURATION_BONUS)       # kéo dài nhiều tuần làm tín hiệu đáng tin hơn
     return float(score), {k: round(v, 4) for k, v in comp.items()}
+
+
+_COMPONENT_VI = {"stress": "mức căng thẳng trong những gì bạn kể", "depression": "mức nặng nề của nội dung",
+                 "emotion": "tỉ lệ cảm xúc tiêu cực", "domains": "các khía cạnh sinh hoạt đáng chú ý",
+                 "self_mood": "tâm trạng bạn tự chấm"}
+
+
+def explain(profile):
+    """Danh sách câu giải thích vì sao có nhận xét này (minh bạch với người dùng và nhóm nghiên cứu)."""
+    if profile["level"] is None or profile["evidence"] == "low":
+        return ["Mình chưa đủ thông tin để nhận xét: cần thêm vài lượt trò chuyện và vài khía cạnh sinh hoạt."]
+    comp = profile.get("components", {})
+    ranked = sorted(((config.CONCERN_WEIGHTS[k] * v, k, v) for k, v in comp.items()), reverse=True)
+    lines = [f"Nhận xét dựa trên {profile['n_turns']} lượt trò chuyện và {len(profile['domains'])}/{len(DOMAINS)} khía cạnh."]
+    for _, k, v in ranked[:3]:
+        lines.append(f"Yếu tố đóng góp nhiều: {_COMPONENT_VI[k]} ({v:.0%}).")
+    flagged = [DOMAINS[d]["name"].lower() for d in DOMAIN_ORDER if profile["domains"].get(d) == "concern" and d != "duration"]
+    if flagged:
+        lines.append("Khía cạnh đáng chú ý: " + ", ".join(flagged) + ".")
+    if profile["domains"].get("duration") == "concern":
+        lines.append("Cảm giác này đã kéo dài nhiều tuần, nên mình tăng mức quan tâm thêm một chút.")
+    if profile.get("level_capped"):
+        lines.append("Mình chưa gắn mức cao nhất vì chưa có thêm bằng chứng từ mô hình phân tích hoặc từ nhiều lượt hơn.")
+    if "stress" not in profile:
+        lines.append("Lưu ý: chưa có điểm từ mô hình phân tích, nên nhận xét chỉ dựa vào những gì bạn kể.")
+    lines.append("Đây là ước lượng tham khảo của một công cụ nghiên cứu, không phải chẩn đoán.")
+    return lines
 
 
 def next_domain(profile, asked=()):

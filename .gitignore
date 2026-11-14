@@ -20,3 +20,6 @@ data/*
 .env
 *.env
 analysis_log*.json
+
+# kết quả chạy thử trên dữ liệu GIẢ LẬP (không phải kết quả nghiên cứu)
+reports/*DEMO_SYNTHETIC*

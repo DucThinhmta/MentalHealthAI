@@ -1,0 +1,4 @@
+{
+  "_huong_dan": "Điền liên hệ hỗ trợ tâm lý của TRƯỜNG/địa phương bạn (đã tự gọi thử để chắc chắn còn hoạt động). Chỉ những mục có name và contact không rỗng mới được hiển thị. Ví dụ: {\"name\": \"Phòng Công tác sinh viên - Tư vấn tâm lý\", \"contact\": \"số điện thoại hoặc email thật\", \"hours\": \"T2-T6, 8h-16h\"}. Mục hiển thị thêm vào cuối danh sách hỗ trợ và trong thông điệp khi phát hiện nguy cơ.",
+  "resources": []
+}

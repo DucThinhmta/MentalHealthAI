@@ -151,7 +151,7 @@ def test_pipeline_crisis_works_without_models(monkeypatch):
 
 def test_pipeline_uses_llm_extraction_for_translation_and_domains(fake_analyze, monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
-    monkeypatch.setattr(llm_client, "extract", lambda text, last: {"english": "I am very tired",
+    monkeypatch.setattr(llm_client, "extract", lambda text, last, recent=(): {"english": "I am very tired",
                                                                    "domains": {"energy": "concern"}})
     seen = {}
 

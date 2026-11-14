@@ -91,7 +91,8 @@ def test_levels_order_from_calm_to_heavy():
 def test_profile_works_without_any_model_scores():
     e = {"words": 12, "model_ok": False, "domains": {"sleep": "concern", "energy": "concern"}, "topics": []}
     p = A.build_profile([e, e, e])
-    assert "stress" not in p and p["components"] == {"domains": 1.0} and p["level"] == 3
+    assert "stress" not in p and p["components"] == {"domains": 1.0}
+    assert p["level"] == len(A.LEVELS) - 2 and p["level_capped"]       # chưa có mô hình xác nhận: không gắn mức cao nhất
 
 
 def test_next_domain_prefers_duration_once_something_is_wrong_then_reasks_ignored():
@@ -142,3 +143,27 @@ def test_load_extra_and_resolve(tmp_path, monkeypatch):
     assert datasets_io.resolve_extra("") == []
     with pytest.raises(FileNotFoundError):
         datasets_io.resolve_extra("missing")
+
+
+# ---------- mức cao nhất cần bằng chứng độc lập; giải thích ----------
+def test_heaviest_label_is_capped_without_model_evidence():
+    e = {"words": 12, "model_ok": False, "domains": {"sleep": "concern", "energy": "concern", "mood": "concern"},
+         "topics": []}
+    p = A.build_profile([e] * 3)
+    assert p["evidence"] != "high" and p["level"] == len(A.LEVELS) - 2 and p["level_capped"]
+    many = {"words": 15, "model_ok": False, "domains": {d: "concern" for d in A.DOMAIN_ORDER[:6]}, "topics": []}
+    full = A.build_profile([many] * 6)
+    assert full["evidence"] == "high" and full["level"] == len(A.LEVELS) - 1 and not full["level_capped"]
+
+
+def test_heaviest_label_still_possible_with_model_scores():
+    e = _entry(0.95, dep=2.8, domains={"sleep": "concern", "support": "concern", "duration": "concern"})
+    assert A.build_profile([e] * 4, [1])["level"] == len(A.LEVELS) - 1
+
+
+def test_explain_mentions_the_main_drivers_and_limits():
+    e = {"words": 12, "model_ok": False, "domains": {"sleep": "concern", "energy": "concern", "duration": "concern"},
+         "topics": []}
+    text = " ".join(A.explain(A.build_profile([e] * 3)))
+    assert "giấc ngủ" in text and "kéo dài" in text and "chưa gắn mức cao nhất" in text and "không phải chẩn đoán" in text
+    assert A.explain(A.build_profile([_entry(0.5)]))[0].startswith("Mình chưa đủ thông tin")

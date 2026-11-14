@@ -55,6 +55,10 @@ tin nhắn người dùng ─► safety.py (luật, chạy trước tiên, hiể
 | `safety.py` | phát hiện nguy cơ tự hại (Anh + Việt), thông điệp an toàn |
 | `llm_client.py` | sinh phản hồi + dịch Việt→Anh qua Anthropic API (tùy chọn) |
 | `response_generator.py` | an toàn → LLM → luật (từ khóa khớp nguyên từ) |
+| `assessment.py`, `intents.py`, `coping.py`, `diary.py` | đánh giá cả cuộc trò chuyện; ý định đặc biệt; bài tập CBT; nhật ký tâm trạng |
+| `privacy.py`, `study.py`, `analyze_study.py`, `dashboard.py` | quyền riêng tư; bảng hỏi PHQ-9/GAD-7; phân tích kiểm chứng; bảng điều khiển ẩn danh |
+| `annotation.py`, `annotate_app.py`, `agreement.py`, `evaluate_gold.py` | gán nhãn tiếng Việt, kappa, tập vàng |
+| `evaluate_safety.py`, `evaluate_dialogs.py`, `run_seeds.py` | đo lớp an toàn, đo hội thoại, nhiều seed |
 | `pipeline.py` | một lượt hội thoại dùng chung cho web và terminal: an toàn → xã giao → phân tích |
 | `smalltalk.py` | nhận diện câu xã giao (chào hỏi, cảm ơn...) để trả lời trực tiếp, không đưa vào phân tích |
 | `calibration.py`, `calibrate.py` | hiệu chỉnh xác suất (temperature) và ngưỡng thứ bậc cho Depression, chọn trên **dev** |
@@ -84,7 +88,6 @@ pytest tests -q                                # kiểm thử logic (không cầ
 ```
 Muốn dùng LLM: `pip install anthropic`, đặt `ANTHROPIC_API_KEY` (và tùy chọn `ANTHROPIC_MODEL`).
 Không có khóa thì ứng dụng vẫn chạy bằng phản hồi theo luật.
-
 
 ## Cải thiện mô hình (cần chạy lại trên máy có dữ liệu/GPU)
 Các bước dưới đây đã có mã nhưng **chưa có số liệu**: repo không chứa dữ liệu và mô hình, nên phải tự chạy rồi mới biết có cải thiện hay không.
@@ -137,9 +140,51 @@ python src/evaluate_all.py --task all                     # có thêm kết qu�
 Khi chạy ứng dụng mà không có API key, nếu đã tải mô hình dịch (`translator.py --download`), tin nhắn tiếng Việt được dịch sang tiếng Anh trên máy trước khi phân tích. Tập test dịch máy chỉ là thước đo gần đúng cho tiếng Việt; nên kiểm tra tay một mẫu bản dịch và ghi rõ trong báo cáo.
 
 ## Hội thoại
+- Trải nghiệm như một cuộc trò chuyện bình thường: **không bao giờ bị chốt**. Bot không "kết luận" và ô nhập luôn mở; **khung bên phải cập nhật trực tiếp**
+  sau mỗi tin nhắn (kể cả trong lúc bot đang soạn phản hồi), hiện chỉ số ngay từ tin đầu kèm **độ tin cậy** (thấp/vừa/cao) và diễn biến theo lượt. Nút *Xem tổng kết*
+  luôn có ở thanh bên nếu người dùng muốn.
 - Có `ANTHROPIC_API_KEY`: LLM trả lời theo kiểu trò chuyện tự nhiên, hiện dần từng chữ, nhớ khoảng 20 lượt gần nhất. Tùy chọn `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (mặc định `low`).
-- Không có khóa: phản hồi theo luật, cùng ngôn ngữ với người dùng, không lặp lại câu đã nói trong cuộc hội thoại.
-- Tin nhắn có biểu hiện tự hại luôn nhận thông điệp cố định, kể cả khi chưa tải mô hình.
+- Không có khóa: phản hồi theo luật, cùng ngôn ngữ với người dùng, không lặp câu, trả lời thật thà các câu hỏi về bot, hỏi chẩn đoán, hỏi thuốc, hỏi về bí mật (`intents.py`).
+- Bài tập nhỏ có hướng dẫn (`coping.py`: thở hộp, tiếp đất 5-4-3-2-1, một việc nhỏ 10 phút, viết ra điều lo, ghi lại suy nghĩ...), nhật ký tâm trạng nhiều ngày (`diary.py`).
+
+## An toàn và quyền riêng tư
+- **Hai tầng phát hiện nguy cơ tự hại:** luật có xử lý phủ định/ẩn dụ (`safety.py`) + phân loại bằng LLM gộp trong lời gọi trích thông tin (chỉ nâng mức, không bao giờ hạ). Khi có nguy cơ luôn trả thông điệp cố định (không dùng LLM), kể cả khi chưa tải mô hình.
+- Đo bằng bộ test hồi quy: `python src/evaluate_safety.py --show-errors` (luật: recall 0,978, trước đó 0,451, **trên bộ do nhóm tự viết nên lạc quan**), `--llm` để thêm lớp LLM.
+- **Màn hình đồng ý** bắt buộc; hỏi nhóm tuổi (dưới 18: thêm kênh 111, không lưu nghiên cứu); mặc định không lưu nội dung hội thoại; khi lưu thì xoá số điện thoại/email/đường dẫn (`privacy.py`).
+- Kênh hỗ trợ: `config.py` (danh sách đã đối chiếu và danh sách cần xác minh); điền liên hệ của trường vào `resources/local_resources.json`.
+
+## Đánh giá hội thoại
+```bash
+python eval/build_dialog_scenarios.py                 # 100 kịch bản: khủng hoảng, hỏi chẩn đoán/thuốc, nịnh, bị chửi, đa ngôn ngữ...
+python src/evaluate_dialogs.py --show-fails           # chế độ luật: 100/100 kiểm tra tự động (trước đó 67/100)
+python src/evaluate_dialogs.py --llm --judge          # LLM thật + bộ chấm LLM sơ bộ (tốn API); người phải kiểm lại
+```
+Kiểm tra tự động chỉ bắt lỗi rõ ràng; **đồng cảm và tự nhiên cần người chấm** (cột `rating_*` trong `reports/dialog_eval.csv`).
+
+## Kiểm chứng khoa học
+Chưa có bằng chứng rằng "mức quan tâm" của bot phản ánh tình trạng thật. Quy trình kiểm chứng:
+```bash
+python src/analyze_study.py --sample-size             # cỡ mẫu cần thu (ρ=0,3: 85 người)
+python src/analyze_study.py --demo                    # chạy thử mã trên dữ liệu GIẢ LẬP (không phải kết quả)
+# Thu dữ liệu: người dùng từ 18 tuổi bật "lưu bản ghi ẩn danh" -> điền PHQ-9/GAD-7 trong mục "Tham gia nghiên cứu" của app
+python src/analyze_study.py --min-evidence medium     # tương quan, AUC, kappa, kiểm chứng từng triệu chứng + khoảng tin cậy
+python src/run_seeds.py --task depression --tag focal --seeds 42 43 44 -- --loss focal --weight-power 0.5   # nhiều seed, trung bình ± độ lệch
+```
+Tài liệu: [`docs/nghien_cuu/PROTOCOL.md`](docs/nghien_cuu/PROTOCOL.md) (đề cương), [`CONSENT_FORM.md`](docs/nghien_cuu/CONSENT_FORM.md) (mẫu phiếu đồng ý),
+[`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) (hiệu năng, hạn chế, đạo đức). **Bản tiếng Việt PHQ-9/GAD-7 trong app là bản nháp chưa kiểm định**: phải thay trước khi thu dữ liệu thật.
+
+## Tập vàng tiếng Việt
+```bash
+python src/sample_for_annotation.py --n 600           # tạo pool.csv (đã xoá thông tin nhận dạng)
+streamlit run src/annotate_app.py                     # MỖI người gán chạy riêng, độc lập, không thấy dự đoán của bot
+python src/agreement.py an linh                       # kappa từng trường + danh sách bất đồng; sau khi điền final_*: thêm --build-gold
+python src/evaluate_gold.py [--translate]             # recall nguy cơ tự hại, khía cạnh, stress trên tập vàng
+```
+Hướng dẫn gán nhãn: [`docs/nghien_cuu/ANNOTATION_GUIDE.md`](docs/nghien_cuu/ANNOTATION_GUIDE.md).
+
+## Công cụ cho nhóm nghiên cứu
+`MHAI_ADMIN_CODE=... streamlit run src/dashboard.py`: số liệu gộp ẩn danh (che ô nhỏ hơn 5), theo dõi trôi dạt điểm theo tuần; từ chối hiển thị nếu chưa đặt mã.
+CI: `.github/workflows/tests.yml` chạy bộ test (không cần torch/anthropic).
 
 ## Lưu ý 
 - Mô hình chỉ hiểu **tiếng Anh**; tiếng Việt cần bật dịch (cần API) — nêu rõ trong hạn chế.

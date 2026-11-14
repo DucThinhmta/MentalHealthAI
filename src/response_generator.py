@@ -8,6 +8,8 @@ import re
 
 import assessment
 import config
+import coping
+import intents
 import llm_client
 import safety
 import smalltalk
@@ -187,37 +189,56 @@ _TOPIC_DOMAIN = {"sleep": "sleep", "lonely": "support", "sad": "mood"}
 _UNSURE = {
     "vi": ["Câu này mình chưa trả lời chắc được, vì mình chỉ là một chatbot lắng nghe của đề tài nghiên cứu, "
            "không biết hết mọi thứ.",
-           "Mình chưa hiểu rõ ý bạn lắm, hoặc đây là điều nằm ngoài khả năng của mình. Bạn nói lại theo cách khác "
-           "giúp mình được không?"],
+           "Mình chưa hiểu rõ ý bạn lắm, hoặc đây là điều nằm ngoài khả năng của mình. Bạn cứ nói lại theo cách khác "
+           "nhé."],
     "en": ["I'm not able to answer that one well, I'm just a listening chatbot made for a research project.",
-           "I'm not sure I understood, or it may be outside what I can do. Could you put it another way?"]}
+           "I'm not sure I understood, or it may be outside what I can do. Feel free to put it another way."]}
 _REDIRECT = {
     "vi": ["Còn nếu bạn muốn kể chuyện của mình, dạo này bạn thế nào?",
            "Nhưng chuyện của bạn thì mình luôn sẵn sàng nghe."],
     "en": ["But if you'd like to talk about yourself, how have you been lately?",
            "I'm always happy to listen to whatever's on your mind, though."]}
 _BRIDGE = {"vi": ["Mình hỏi thêm một chút nhé:", "Cho mình hỏi thêm một điều:"],
-           "en": ["Can I ask one more thing?", "One more question, if that's okay:"]}
-_QUESTION_END = re.compile(r"(?:\?|\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)"
-                           r"\s*[.!]*)$")
+           "en": ["If you don't mind, one more thing I'm wondering:", "One more thing I'd like to understand:"]}
+_QUESTION_END = re.compile(r"\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)\s*[.!]*$")
+_NOT_A_QUESTION = re.compile(r"\b(?:khong|chang|chua) (?:biet|ro|hieu|nho|chac)\b")   # "không rõ vì sao" là câu trả lời
+_IMPERATIVE = re.compile(r"^(?:giai|tinh|dich|viet ho|lam ho|code|lap trinh|tim giup|tra cuu|solve|translate|write me)\b")
+_EN_WORDS = {"the", "a", "i", "you", "is", "am", "are", "to", "and", "of", "my", "me", "it", "in", "that", "this", "for",
+             "with", "have", "was", "so", "but", "not", "can", "do", "what", "how", "feel", "im"}
 _QUESTION_START = re.compile(r"^(?:tai sao|vi sao|lam sao|lam the nao|the nao|co phai|ban co|why|what|how|who|where|"
                              r"when|can you|could you|do you|are you|is it)\b")
 
 
-def looks_like_question(text):
-    """Câu hỏi (dấu ?, hoặc từ để hỏi ở đầu/cuối câu; nhận cả khi gõ không dấu)."""
+def looks_like_question(text, history=None):
+    """Câu hỏi hoặc yêu cầu: có dấu ?, lệnh kiểu 'giải giúp mình...', hoặc từ để hỏi ở đầu/cuối câu (nhận cả khi gõ không dấu).
+
+    Câu không có dấu ? mà đang TRẢ LỜI câu hỏi của bot ngay trước đó (hoặc kiểu 'không rõ vì sao') không tính là câu hỏi."""
     t = strip_accents(text or "").strip()
+    if "?" in t or _IMPERATIVE.search(t):
+        return True
+    if _NOT_A_QUESTION.search(t):
+        return False
+    last_bot = next((m["content"] for m in reversed(history or []) if m.get("role") == "assistant"), "")
+    if last_bot.rstrip().endswith("?"):
+        return False
     return bool(_QUESTION_END.search(t) or _QUESTION_START.search(t))
+
+
+def conversation_lang(text, history=None):
+    """Ngôn ngữ phản hồi: dựa vào câu hiện tại, và vào các tin trước khi câu hiện tại ngắn/không dấu khó đoán."""
+    if detect_lang(text) == "vi":
+        return "vi"
+    words = re.findall(r"[a-z']+", (text or "").lower())
+    if sum(1 for w in words if w in _EN_WORDS) >= 2:
+        return "en"
+    users = [m["content"] for m in history or [] if m.get("role") == "user"]
+    if users and users[-1] == text:
+        users = users[:-1]
+    return "vi" if any(detect_lang(m) == "vi" for m in users[-4:]) else "en"
 
 
 _ACK = {"vi": ["Ừ, mình hiểu rồi.", "Mình nghe rồi nè.", "Cảm ơn bạn kể mình nghe."],
         "en": ["Got it.", "Okay, I hear you.", "Thanks for telling me."]}
-OFFER = {"vi": "Mình nghĩ mình đã hiểu bạn khá rõ rồi. Khi nào muốn, bạn bấm \"Xem tổng kết\" để mình tóm lại "
-               "và gợi ý vài hướng nhé.",
-         "en": "I think I have a good picture now. Whenever you like, tap \"Xem tổng kết\" and I'll sum things up "
-               "with a few ideas."}
-
-
 def _pick(pool, used, rng):
     """Chọn một câu chưa xuất hiện trong các phản hồi trước; nếu đã dùng hết thì chọn bất kỳ."""
     fresh = [s for s in pool if s not in used]
@@ -245,10 +266,13 @@ def _view(info, latest=None):
     return view
 
 
-def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None):
-    lang = detect_lang(text)
+def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, intent=None, llm_on=False):
+    lang = conversation_lang(text, history)
     t = _T[lang]
     used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant")
+    fixed = intents.reply(intent, lang, llm_on, used) if intent else None
+    if fixed:                                         # chẩn đoán/thuốc/riêng tư/đóng vai/bực bội/xin công nhận
+        return fixed
     view = _view(info, latest)
     context = detect_context(text)
     topics = [topic for topic in _PRIORITY if context[topic]]
@@ -270,9 +294,14 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None):
 
     troubled = (stress or heavy or emotion_topic is not None or domain_topic is not None
                 or any(tp in _AFFECTIVE for tp in topics))
+    if intent == "advice" and (troubled or topics):    # xin lời khuyên: phản chiếu một câu + một bài tập phù hợp, không hỏi dồn
+        ex = coping.pick(topics, {**known, **said}, used=coping.used_in(history))
+        key = topics[0] if topics else emotion_topic
+        reflect = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
+        return f"{reflect} {coping.brief(ex, lang, 2)}"
     if not troubled:
         has_concern = "concern" in known.values()
-        if looks_like_question(text):
+        if looks_like_question(text, history):
             # Câu hỏi bot không trả lời được bằng luật: nói thật, không lờ đi rồi hỏi sang chuyện khác.
             parts.append(_pick(_UNSURE[lang], used, rng))
             parts.append(_pick(_REDIRECT[lang], used, rng))
@@ -299,31 +328,38 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None):
             parts.append(domain_q)                             # xen kẽ: hỏi sâu chủ đề <-> hỏi khía cạnh còn thiếu
         else:
             parts.append(rng.choice(topic_q) if topic_q else _pick(t["ask"]["_generic"], used, rng))
-    if _is_profile(info) and info["evidence"] == "high" and OFFER[lang] not in used:
-        parts.append(OFFER[lang])
     return " ".join(parts)
 
 
-def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=None):
+def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=None, intent=None, llm_on=False):
     """Phản hồi không dùng LLM -> (văn bản, nguồn)."""
     if small is not None:
         reply = smalltalk.reply(small)
         used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant")
-        for key in ("_follow", "_follow_after_how"):         # câu hỏi thăm đã hỏi rồi thì không lặp lại
+        earlier_user_turns = sum(1 for m in history or [] if m.get("role") == "user") - 1   # trừ tin nhắn hiện tại
+        for key in ("_follow", "_follow_after_how"):         # đã hỏi thăm rồi, hoặc người dùng đã kể chuyện rồi: không hỏi lại như mới gặp
             follow = smalltalk._REPLIES[small.lang][key]
-            if reply.endswith(follow) and follow in used and reply != follow:
+            if reply.endswith(follow) and reply != follow and (follow in used or earlier_user_turns >= 1):
                 reply = reply[: -len(follow)].rstrip()
         return reply, "smalltalk"
     if info is None:
         return smalltalk.generic_reply(user_message, rng), "rules"
-    return _rule_based(info, user_message, rng, history, latest, ask_domain), "rules"
+    return _rule_based(info, user_message, rng, history, latest, ask_domain, intent, llm_on), "rules"
 
 
-def _safety_level(user_message, info, history):
+def _safety_level(user_message, info, history, risk_hint=None):
+    """crisis > elevated > none. risk_hint: kết quả lớp LLM thứ hai ('high' | 'possible' | None).
+
+    Luật từ khóa luôn được kiểm trước; LLM chỉ có thể NÂNG mức (high -> crisis, possible -> ít nhất elevated),
+    không bao giờ hạ mức mà luật đã báo."""
     view = assessment.safety_view(info) if _is_profile(info) else info
     if _is_profile(info) and info["evidence"] == "low":
         view = {}                                    # tín hiệu "elevated" chỉ dùng khi đã đủ dữ liệu
     level = safety.assess_safety(user_message, view)
+    if level != "crisis" and risk_hint == "high":
+        return "crisis"
+    if level == "none" and risk_hint == "possible":
+        level = "elevated"
     note_lang = detect_lang(user_message)
     if level == "elevated" and any(safety.elevated_note(note_lang) in m["content"]
                                    for m in history or [] if m.get("role") == "assistant"):
@@ -332,26 +368,27 @@ def _safety_level(user_message, info, history):
 
 
 def generate_reply(info, user_message, history=None, use_llm=True, rng=random, small=None,
-                   latest=None, ask_domain=None):
+                   latest=None, ask_domain=None, risk_hint=None, minor=False, intent=None):
     """Trả về dict: {'reply', 'source' ('safety'|'llm'|'rules'|'smalltalk'), 'safety_level'}.
 
     info: đánh giá cả cuộc trò chuyện (assessment.build_profile) hoặc kết quả một câu kiểu cũ; None = không phân tích.
     """
-    meta, chunks = stream_reply(info, user_message, history, use_llm, rng, small, latest, ask_domain, stream=False)
+    meta, chunks = stream_reply(info, user_message, history, use_llm, rng, small, latest, ask_domain,
+                                stream=False, risk_hint=risk_hint, minor=minor, intent=intent)
     reply = "".join(chunks)
     return {"reply": reply, **meta}
 
 
 def stream_reply(info, user_message, history=None, use_llm=True, rng=random, small=None,
-                 latest=None, ask_domain=None, stream=True):
+                 latest=None, ask_domain=None, stream=True, risk_hint=None, minor=False, intent=None):
     """Trả (meta, iterator các đoạn chữ) để giao diện hiện dần. 'source' chỉ chính xác SAU KHI đọc hết iterator."""
-    level = _safety_level(user_message, info, history)
+    level = _safety_level(user_message, info, history, risk_hint)
     meta = {"source": "rules", "safety_level": "elevated" if level == "elevated_noted" else level}
 
     def chunks():
         if level == "crisis":
             meta["source"] = "safety"
-            yield safety.crisis_message(user_message)
+            yield safety.crisis_message(user_message, minor)
             return
         got_text = False
         if use_llm and llm_client.is_available():
@@ -369,7 +406,8 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
             except Exception:    # lỗi giữa chừng: giữ phần đã hiện; chưa có chữ nào thì dùng luật
                 pass
         if not got_text:
-            reply, meta["source"] = _fallback(info, user_message, history, rng, small, latest, ask_domain)
+            reply, meta["source"] = _fallback(info, user_message, history, rng, small, latest, ask_domain, intent,
+                                              llm_on=use_llm and llm_client.is_available())
             yield reply
         if level == "elevated":
             yield "\n\n" + safety.elevated_note(detect_lang(user_message))
