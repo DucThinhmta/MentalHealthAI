@@ -87,7 +87,7 @@ def test_llm_high_risk_triggers_fixed_crisis_message_without_calling_the_llm_rep
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
     monkeypatch.setattr(llm_client, "extract", lambda text, last, recent=(): {
         "english": "I want to go see my grandparents who passed away", "domains": {}, "risk": "high"})
-    monkeypatch.setattr(llm_client, "stream_reply", lambda *a: pytest.fail("không được dùng LLM để trả lời khi nguy cơ cao"))
+    monkeypatch.setattr(llm_client, "stream_reply", lambda *a, **kw: pytest.fail("không được dùng LLM để trả lời khi nguy cơ cao"))
     monkeypatch.setattr(pipeline, "_analyze", lambda t: (_ for _ in ()).throw(FileNotFoundError("x")))
     sess = pipeline.Session()
     turn = pipeline.run_turn("Dạo này mình chỉ muốn đi gặp ông bà luôn thôi", sess, rng=random.Random(0))
@@ -100,7 +100,7 @@ def test_llm_possible_risk_adds_a_gentle_note_but_keeps_the_conversation(monkeyp
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
     monkeypatch.setattr(llm_client, "extract", lambda text, last, recent=(): {
         "english": "I feel like a burden", "domains": {}, "risk": "possible"})
-    monkeypatch.setattr(llm_client, "stream_reply", lambda info, text, hist, ask: iter(["Mình nghe bạn."]))
+    monkeypatch.setattr(llm_client, "stream_reply", lambda info, text, hist, ask, **kw: iter(["Mình nghe bạn."]))
     monkeypatch.setattr(pipeline, "_analyze", lambda t: (_ for _ in ()).throw(FileNotFoundError("x")))
     turn = pipeline.run_turn("Mình thấy mình thật vô dụng", pipeline.Session(), rng=random.Random(0))
     reply = "".join(turn.chunks)

@@ -293,3 +293,95 @@ def test_exercises_dialog_opens_and_lists_every_exercise():
     box = next(s for s in at.selectbox if s.key == "exercise_pick")
     assert len(box.options) == 8 and "Tiếp đất" in " ".join(box.options)
     assert "Hít vào bằng mũi" in _markdown(at)                              # bài đầu tiên hiện sẵn các bước
+
+
+# ---------------------------------------------------------------- cấu trúc tư vấn kiểu ChatGPT
+STORY = ["Dạo này mình áp lực việc học lắm, ngủ cũng không ngon", "Mình lo thi cuối kỳ, đầu óc cứ rối"]
+
+
+def test_multi_chat_switch_keeps_each_conversation_and_memory_is_labels_only():
+    at = _app()
+    for t in STORY:
+        at = _say(at, t)
+    first_id = at.session_state["active"]
+    _button(at, "new_chat").click().run()
+    assert not at.exception and _history(at) == [] and at.session_state["active"] != first_id
+    assert at.session_state["memory"].chats == 1 and at.session_state["memory"].topics
+    at = _say(at, "Xin chào")
+    _button(at, f"chat_{first_id}").click().run()
+    assert not at.exception and [m["content"] for m in _history(at) if m["role"] == "user"] == STORY
+    assert "Xin chào" not in str(at.session_state["memory"].__dict__)
+
+
+def test_new_chat_on_empty_chat_is_noop_and_delete_active_chat():
+    at = _app()
+    before = at.session_state["active"]
+    _button(at, "new_chat").click().run()
+    assert at.session_state["active"] == before
+    at = _say(at, STORY[0])
+    _button(at, "delete_chat").click().run()
+    assert not at.exception and _history(at) == [] and at.session_state["memory"].is_empty()
+
+
+def test_regenerate_and_edit_last_message():
+    at = _app()
+    for t in STORY:
+        at = _say(at, t)
+    n = len(_history(at))
+    _button(at, "act_regen").click().run()
+    assert not at.exception and len(_history(at)) == n and len(at.session_state["sess"].entries) == 2
+    assert len(at.session_state["log"]) == 2
+    _button(at, "act_edit").click().run()
+    area = next(t for t in at.text_area if t.label == "Sửa tin nhắn cuối của bạn")
+    assert area.value == STORY[1]
+    area.set_value("Mình lo bài kiểm tra tuần sau").run()
+    _button(at, "edit_send").click().run()
+    assert not at.exception and _history(at)[-2]["content"] == "Mình lo bài kiểm tra tuần sau"
+    assert len(_history(at)) == n and len(at.session_state["sess"].entries) == 2
+
+
+def test_plan_is_added_from_sidebar_and_shown_in_panel_stage():
+    at = _app()
+    at = _say(at, STORY[0])
+    _button(at, "plan_add").click().run()
+    sess = at.session_state["sess"]
+    assert not at.exception and len(sess.plan) == 1 and sess.stage() == "acting"
+    assert "Phiên trò chuyện" in _markdown(at) and "Việc nhỏ" in _markdown(at)
+    _button(at, f"plan_rm_{at.session_state['active']}_{sess.plan[0]['id']}").click().run()
+    assert at.session_state["sess"].plan == []
+
+
+def test_end_session_adds_closing_message_and_chat_stays_open():
+    at = _app()
+    for t in STORY:
+        at = _say(at, t)
+    _button(at, "close_session").click().run()
+    sess = at.session_state["sess"]
+    assert not at.exception and sess.closed and "Bạn có thể quay lại" in _history(at)[-1]["content"]
+    assert at.chat_input[0].disabled is False
+    at = _say(at, "Mình muốn nói thêm một chút")
+    assert not at.session_state["sess"].closed
+
+
+def test_style_radio_changes_session_style_and_stage_chips_send_messages():
+    at = _app()
+    at = _say(at, STORY[0])
+    radio = next(r for r in at.radio if r.label == "Bạn muốn mình đồng hành thế nào?")
+    radio.set_value("Chỉ lắng nghe").run()
+    assert at.session_state["sess"].style == "listen"
+    before = len(_history(at))
+    chip = next(b for b in at.button if b.key and b.key.startswith("chip_") or b.key and b.key.startswith("quick_"))
+    chip.click().run()
+    assert not at.exception and len(_history(at)) == before + 2
+
+
+def test_memory_toggle_and_clear():
+    at = _app()
+    for t in STORY:
+        at = _say(at, t)
+    _button(at, "new_chat").click().run()
+    assert not at.session_state["memory"].is_empty()
+    _button(at, "memory_clear").click().run()
+    assert at.session_state["memory"].is_empty()
+    at = _say(at, STORY[0])                           # mới: không còn lời nhắc lần trước
+    assert "Mình nhớ lần trước" not in _history(at)[-1]["content"]

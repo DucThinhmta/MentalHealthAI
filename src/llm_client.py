@@ -14,6 +14,7 @@ import os
 
 import assessment
 import config
+import counseling
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
 EFFORT = os.getenv("ANTHROPIC_EFFORT", "low")
@@ -135,7 +136,11 @@ def _profile_signals(p):
     return "\n".join(lines)
 
 
-def _system(info, ask_domain=None):
+AVOID_PROMPT = ("Người dùng vừa bấm viết lại câu trả lời trước của bạn. Hãy viết một phản hồi KHÁC (cách mở đầu, cách diễn đạt và "
+                "góc tiếp cận), vẫn tuân thủ mọi nguyên tắc ở trên. Câu trả lời trước (đừng lặp lại): {prev}")
+
+
+def _system(info, ask_domain=None, coach=None, avoid=""):
     """Khối nhân vật cố định (cache được) + ghi chú thay đổi theo lượt."""
     blocks = [
         {"type": "text", "text": persona(), "cache_control": {"type": "ephemeral"}},
@@ -145,6 +150,12 @@ def _system(info, ask_domain=None):
         spec = assessment.DOMAINS[ask_domain]
         blocks.append({"type": "text", "text": ASK_PROMPT.format(domain=spec["name"].lower(),
                                                                  example=spec["ask"]["vi"][0])})
+    if coach:                                           # giai đoạn của phiên, cách đồng hành, việc nhỏ đã chọn, điều đã nhớ
+        blocks.append({"type": "text", "text": counseling.guide_text(
+            coach.get("stage", "exploring"), coach.get("style", counseling.DEFAULT_STYLE), coach.get("memory_text", ""),
+            coach.get("plan", ()))})
+    if avoid:
+        blocks.append({"type": "text", "text": AVOID_PROMPT.format(prev=avoid)})
     return blocks
 
 
@@ -164,8 +175,8 @@ def _normalize_history(history, user_message, max_turns=MAX_HISTORY_MESSAGES):
     return merged
 
 
-def _request(info, user_message, history, ask_domain=None):
-    kwargs = dict(model=MODEL, max_tokens=MAX_TOKENS, system=_system(info, ask_domain),
+def _request(info, user_message, history, ask_domain=None, coach=None, avoid=""):
+    kwargs = dict(model=MODEL, max_tokens=MAX_TOKENS, system=_system(info, ask_domain, coach, avoid),
                   messages=_normalize_history(history, user_message))
     if EFFORT:
         kwargs["output_config"] = {"effort": EFFORT}
@@ -179,13 +190,13 @@ def _text(message) -> str:
     return "".join(b.text for b in message.content if b.type == "text").strip()
 
 
-def generate_reply(info: dict | None, user_message: str, history: list, ask_domain=None) -> str:
-    return _text(_client().messages.create(**_request(info, user_message, history, ask_domain)))
+def generate_reply(info: dict | None, user_message: str, history: list, ask_domain=None, coach=None, avoid="") -> str:
+    return _text(_client().messages.create(**_request(info, user_message, history, ask_domain, coach, avoid)))
 
 
-def stream_reply(info: dict | None, user_message: str, history: list, ask_domain=None):
+def stream_reply(info: dict | None, user_message: str, history: list, ask_domain=None, coach=None, avoid=""):
     """Sinh phản hồi theo từng đoạn chữ (để giao diện hiện dần như đang gõ)."""
-    with _client().messages.stream(**_request(info, user_message, history, ask_domain)) as stream:
+    with _client().messages.stream(**_request(info, user_message, history, ask_domain, coach, avoid)) as stream:
         yield from stream.text_stream
 
 

@@ -13,8 +13,10 @@ import streamlit as st
 import assessment as A
 import config
 import coping
+import counseling
 import diary
 import llm_client
+import memory
 import pipeline
 import privacy
 import study
@@ -35,21 +37,96 @@ MOOD_TEXT = {1: "Hôm nay mình thấy rất tệ", 2: "Hôm nay mình thấy kh
 
 # ------------------------------------------------------------------ trạng thái
 S = st.session_state
-for key, factory in {"sess": pipeline.Session, "log": list, "last_safety": lambda: "none",
-                     "pending": lambda: None, "summary_cache": dict, "summary_seen": lambda: False,
-                     "large_text": lambda: False, "details": lambda: False, "consent": lambda: None,
-                     "study_done": lambda: None, "participant": lambda: None, "diary_code": lambda: None}.items():
+# Biến của MỘT cuộc trò chuyện (được cất đi/khôi phục khi chuyển cuộc trò chuyện). Mọi thứ chỉ nằm trong phiên trình duyệt.
+CHAT_VARS = {"sess": pipeline.Session, "log": list, "last_safety": lambda: "none", "summary_cache": dict,
+             "summary_seen": lambda: False, "study_done": lambda: None, "participant": lambda: None}
+for key, factory in {**CHAT_VARS, "pending": lambda: None, "large_text": lambda: False, "details": lambda: False,
+                     "consent": lambda: None, "diary_code": lambda: None, "chats": dict, "chat_seq": lambda: 1,
+                     "active": lambda: "c1", "title": lambda: None, "memory": memory.Memory, "remembered": set,
+                     "editing": lambda: False}.items():
     if key not in S:
         S[key] = factory()
 # Trạng thái đồng ý (nhóm tuổi, cho phép lưu nghiên cứu) áp vào phiên hội thoại ở MỖI lần chạy lại.
 S.sess.minor = bool(S.consent and S.consent.get("minor"))
 S.sess.research = bool(S.consent and S.consent.get("research") and not S.sess.minor)
+# Điều đã nhớ từ các cuộc trước (rỗng nếu người dùng tắt hoặc đã xoá).
+S.sess.memory_text = memory.text(S.memory)
+S.sess.memory_greeting = memory.greeting(S.memory)
 
 
-def reset_conversation():
-    S.sess, S.log, S.last_safety, S.pending = pipeline.Session(), [], "none", None
-    S.summary_cache, S.summary_seen = {}, False
-    S.study_done, S.participant = None, None
+def chat_title(sess, custom=None):
+    first = next((m["content"] for m in sess.history if m["role"] == "user"), "")
+    return custom or ((first[:28] + "…") if len(first) > 28 else first) or "Cuộc trò chuyện mới"
+
+
+def remember_current():
+    """Ghi nhớ tóm tắt (chỉ nhãn) của cuộc trò chuyện đang mở, một lần cho mỗi cuộc, khi người dùng rời nó."""
+    if S.active not in S.remembered and S.sess.profile()["n_turns"] >= 2 and S.memory.enabled:
+        memory.remember(S.memory, S.sess.profile(), S.sess.plan)
+        S.remembered.add(S.active)
+
+
+def _fresh_chat():
+    S.chat_seq += 1
+    S.active = f"c{S.chat_seq}"
+    for k, factory in CHAT_VARS.items():
+        S[k] = factory()
+    S.title, S.pending, S.editing = None, None, False
+
+
+def _park():
+    S.chats[S.active] = {**{k: S[k] for k in CHAT_VARS}, "title": S.title}
+
+
+def _load(cid):
+    snap = S.chats.pop(cid)
+    for k in CHAT_VARS:
+        S[k] = snap[k]
+    S.title, S.active, S.pending, S.editing = snap["title"], cid, None, False
+
+
+def new_chat():
+    if not S.sess.history:                  # cuộc đang mở còn trống thì dùng luôn
+        return
+    remember_current()
+    _park()
+    _fresh_chat()
+
+
+def switch_chat(cid):
+    if cid == S.active or cid not in S.chats:
+        return
+    remember_current()
+    if S.sess.history:
+        _park()
+    _load(cid)
+
+
+def delete_chat(cid):
+    """Xoá hẳn một cuộc trò chuyện (không được ghi nhớ nữa)."""
+    if cid != S.active:
+        S.chats.pop(cid, None)
+        return
+    S.remembered.discard(cid)
+    if S.chats:
+        _load(next(reversed(S.chats)))
+    else:
+        _fresh_chat()
+
+
+def transcript_markdown():
+    lines = [f"# {chat_title(S.sess, S.title)}", ""]
+    for m in S.sess.history:
+        lines += [f"**{'Bạn' if m['role'] == 'user' else config.BOT_NAME}:** {m['content']}", ""]
+    return "\n".join(lines)
+
+
+def take_back_app():
+    """Gỡ lượt cuối (cả phân tích và nhật ký) để viết lại hoặc sửa."""
+    back = pipeline.take_back(S.sess)
+    if back and S.log:
+        S.log.pop()
+    return back
 
 
 # ------------------------------------------------------------------ giao diện chung (CSS)
@@ -121,6 +198,13 @@ h1, h2, h3, h4, div[data-testid="stMarkdownContainer"] {{font-family:'Be Vietnam
 .mh-badge.unknown {{background:var(--mh-unk-bg); color:var(--mh-unk);}}
 .mh-tip {{border-left:4px solid var(--mh-primary); background:#FAFAFD; border-radius:10px; padding:.7rem .9rem; margin-bottom:.6rem;}}
 .mh-tip b {{display:block; margin-bottom:.2rem;}}
+.mh-stages {{display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.3rem;}}
+.mh-stage {{border-radius:99px; padding:.25rem .65rem; font-size:{BASE - 3}px; border:1px solid var(--mh-border);
+           color:var(--mh-muted); background:#FAFAFD;}}
+.mh-stage.done {{background:var(--mh-ok-bg); color:var(--mh-ok); border-color:#C5E2D5;}}
+.mh-stage.current {{background:var(--mh-primary); color:#FFFFFF; border-color:var(--mh-primary); font-weight:600;}}
+.mh-curchat {{background:var(--mh-primary-soft); border-radius:12px; padding:.5rem .8rem; color:var(--mh-text);
+             font-size:{BASE - 1}px; font-weight:600; margin:.2rem 0 .3rem;}}
 
 .mh-status {{display:flex; align-items:center; gap:.55rem; background:var(--mh-lav); border-radius:12px;
             padding:.5rem .85rem; color:#3B2F6B; font-size:{BASE - 2}px; margin-bottom:.7rem;}}
@@ -260,6 +344,11 @@ def exercises_dialog():
     st.markdown(f"**{ex.intro}**")
     for i, step in enumerate(ex.steps, 1):
         st.markdown(f"{i}. {step}")
+    if any(p_["id"] == ex.id for p_ in S.sess.plan):
+        st.caption("✅ Bài này đã nằm trong mục Việc nhỏ của bạn.")
+    elif st.button("🌱 Thêm vào Việc nhỏ của mình", key="plan_add_dialog"):
+        counseling.add_plan(S.sess.plan, ex.id)
+        st.rerun()
     st.caption("Đây là kỹ thuật tự giúp mình phổ biến, không phải điều trị. Nếu khó chịu kéo dài hoặc nặng lên, "
                "hãy trò chuyện với người thân hoặc chuyên gia.")
 
@@ -304,7 +393,27 @@ def render_summary(profile, narrative):
 # ------------------------------------------------------------------ thanh bên
 profile_now = S.sess.profile()
 with st.sidebar:
-    st.button("💬  Cuộc trò chuyện mới", on_click=reset_conversation, use_container_width=True, key="new_chat")
+    st.button("💬  Cuộc trò chuyện mới", on_click=new_chat, use_container_width=True, key="new_chat")
+    st.markdown(f'<div class="mh-curchat">▸ {chat_title(S.sess, S.title)}</div>', unsafe_allow_html=True)
+    for cid, snap in reversed(list(S.chats.items())[-8:]):
+        st.button("💬 " + chat_title(snap["sess"], snap["title"]), key=f"chat_{cid}", on_click=switch_chat, args=(cid,),
+                  use_container_width=True)
+    with st.expander("⚙️ Quản lý cuộc trò chuyện này"):
+        new_name = st.text_input("Đổi tên", value=chat_title(S.sess, S.title), key=f"rename_{S.active}", max_chars=40)
+        if new_name.strip() and new_name.strip() != chat_title(S.sess, S.title):
+            S.title = new_name.strip()
+            st.rerun()
+        st.download_button("⬇️ Xuất cuộc trò chuyện (.md)", transcript_markdown(), file_name="tro_chuyen.md",
+                           mime="text/markdown", use_container_width=True, disabled=not S.sess.history)
+        st.button("🗑️ Xoá cuộc trò chuyện này", on_click=delete_chat, args=(S.active,), use_container_width=True,
+                  key="delete_chat", help="Xoá hẳn khỏi phiên trình duyệt này; điều trong đó cũng sẽ không được ghi nhớ.")
+    st.divider()
+    _style_keys = list(counseling.STYLES)
+    _style_labels = [counseling.STYLES[k][0] for k in _style_keys]
+    _pick = st.radio("Bạn muốn mình đồng hành thế nào?", _style_labels, index=_style_keys.index(S.sess.style),
+                     key=f"style_{S.active}")
+    S.sess.style = _style_keys[_style_labels.index(_pick)]
+    st.caption(counseling.STYLES[S.sess.style][1])
     if st.button("📋  Xem tổng kết", use_container_width=True, key="open_summary",
                  disabled=profile_now["n_turns"] == 0,
                  help="Tóm lại cuộc trò chuyện và gợi ý vài hướng. Trò chuyện càng nhiều, nhận xét càng chính xác."):
@@ -316,6 +425,43 @@ with st.sidebar:
         exercises_dialog()
     st.toggle("Chữ lớn, dễ đọc", key="large_text")
     st.divider()
+    n_done = sum(1 for p_ in S.sess.plan if p_["done"])
+    with st.expander(f"🌱 Việc nhỏ của mình ({n_done}/{len(S.sess.plan)})" if S.sess.plan else "🌱 Việc nhỏ của mình"):
+        if not S.sess.plan:
+            st.caption("Chưa có việc nào. Khi bot gợi ý một việc nhỏ và bạn muốn thử, nó sẽ được ghi vào đây; bạn cũng "
+                       "có thể tự thêm từ danh sách dưới.")
+        for p_ in list(S.sess.plan):
+            c1, c2 = st.columns([5, 1])
+            ticked = c1.checkbox(p_["name"], value=p_["done"], key=f"plan_{S.active}_{p_['id']}")
+            if c2.button("✕", key=f"plan_rm_{S.active}_{p_['id']}", help="Bỏ khỏi danh sách"):
+                counseling.remove_plan(S.sess.plan, p_["id"])
+                st.rerun()
+            if ticked != p_["done"]:
+                counseling.toggle_plan(S.sess.plan, p_["id"], ticked)
+                st.rerun()
+        _labels = {f"{e.icon} {e.name}": e.id for e in coping.EXERCISES.values()}
+        _choice = st.selectbox("Thêm một việc", list(_labels), key="plan_pick")
+        if st.button("➕ Thêm vào danh sách", key="plan_add", use_container_width=True):
+            counseling.add_plan(S.sess.plan, _labels[_choice])
+            st.rerun()
+    with st.expander("🏁 Kết thúc phiên"):
+        st.caption("Chấm lại tâm trạng và nhận lời tổng kết. Bạn vẫn nhắn tiếp được sau đó, phiên sẽ mở lại.")
+        _moods = [f"{icon} {label}" for _v, icon, label in A.MOOD_SCALE]
+        _mood_pick = st.radio("Bây giờ bạn thấy thế nào?", _moods, index=2, key=f"endmood_{S.active}")
+        if st.button("Kết thúc phiên", key="close_session", use_container_width=True,
+                     disabled=S.sess.n_user_turns() == 0):
+            pipeline.close_session(S.sess, mood=A.MOOD_SCALE[_moods.index(_mood_pick)][0], use_llm=LLM_OK)
+            S.summary_cache = {}
+            st.rerun()
+    with st.expander("🧠 Mình nhớ gì về bạn"):
+        S.memory.enabled = st.toggle("Nhớ giữa các cuộc trò chuyện trong phiên này", value=S.memory.enabled, key="memory_on")
+        st.caption("Chỉ lưu nhãn tóm tắt (chủ đề, khía cạnh), không lưu nguyên văn; mất khi đóng trang. Bạn xoá được bất cứ lúc nào.")
+        _mem = memory.text(S.memory)
+        st.markdown(_mem if _mem else "Chưa nhớ gì.")
+        if st.button("Xoá những điều đã nhớ", key="memory_clear", disabled=S.memory.is_empty()):
+            memory.clear(S.memory)
+            S.remembered.clear()
+            st.rerun()
     with st.expander("📞 Khi cần hỗ trợ ngay", expanded=S.last_safety == "crisis"):
         for r in config.support_resources(S.sess.minor):
             st.markdown(f"- {r}")
@@ -449,6 +595,22 @@ def score_series():
     return out
 
 
+STAGE_NOTE = {
+    "opening": "Mình đang làm quen và lắng nghe bạn.",
+    "exploring": "Mình đang cố hiểu chuyện gì đang xảy ra với bạn.",
+    "planning": "Mình đã hiểu khá rõ, có thể cùng bạn chọn một việc nhỏ (nếu bạn muốn).",
+    "acting": "Bạn đã có việc nhỏ để thử; mình sẽ hỏi thăm khi bạn quay lại.",
+    "closing": "Phiên đã kết thúc. Bạn vẫn có thể nhắn tiếp bất cứ lúc nào."}
+
+
+def stage_card():
+    cur = S.sess.stage()
+    parts = "".join(f'<span class="mh-stage {state}">{icon} {label}</span>'
+                    for _sid, label, icon, state in counseling.stage_progress(cur))
+    return (f'<div class="mh-card"><h4>Phiên trò chuyện</h4><div class="mh-stages">{parts}</div>'
+            f'<div class="mh-small">{STAGE_NOTE[cur]} Các giai đoạn chỉ để định hướng, bạn không bị khoá ở bước nào.</div></div>')
+
+
 def render_panel(p, status=None):
     """Vẽ toàn bộ khung bên phải. KHÔNG tạo widget (hàm này được gọi nhiều lần trong một lượt chạy để cập nhật trực tiếp)."""
     if status:
@@ -456,7 +618,7 @@ def render_panel(p, status=None):
     if S.sess.models_missing:
         st.caption("Chưa tải mô hình phân tích (chạy `python src/download_models.py`). Hiện đánh giá dựa trên "
                    "những gì bạn kể về giấc ngủ, năng lượng, tâm trạng... và tâm trạng bạn tự chấm.")
-    st.markdown(live_card(p) + understanding_card(p) + emotion_card(p) + topic_card(p) + domain_card(p),
+    st.markdown(stage_card() + live_card(p) + understanding_card(p) + emotion_card(p) + topic_card(p) + domain_card(p),
                 unsafe_allow_html=True)
     series = score_series()
     if len(series) >= 2:
@@ -480,15 +642,14 @@ panel_slot = panel_col.empty()      # nơi vẽ lại khung phân tích trực t
 def handle(item):
     """Chạy một lượt: hiện tin nhắn người dùng, hiện dần phản hồi, cập nhật nhật ký."""
     text, answered = item["text"], item.get("answered")
-    if item.get("mood"):
-        S.sess.self_moods.append(item["mood"])
     with st.chat_message("user"):
         st.write(text)
     with panel_slot.container():
         render_panel(S.sess.profile(), status="Đang phân tích tin nhắn của bạn…")
     with st.chat_message("assistant", avatar=BOT_AVATAR):
         with st.spinner("Đang nghe bạn..."):
-            turn = pipeline.run_turn(text, S.sess, use_llm=LLM_OK, answered=answered)
+            turn = pipeline.run_turn(text, S.sess, use_llm=LLM_OK, answered=answered, mood=item.get("mood"),
+                                     avoid=item.get("avoid", ""))
         with panel_slot.container():                      # phân tích xong: cập nhật ngay, trước khi bot viết xong
             render_panel(turn.profile or S.sess.profile(), status="Đã cập nhật · bot đang soạn phản hồi…")
         st.write_stream(typewriter(turn.chunks))
@@ -507,6 +668,38 @@ def handle(item):
         entry["conversation"] = {k: turn.profile.get(k) for k in ("evidence", "score", "level", "coverage")}
     S.log.append(privacy.scrub_entry(entry, keep_text=S.sess.research))     # mặc định KHÔNG lưu nội dung
     st.rerun()
+
+
+def render_actions():
+    """Hành động trên tin nhắn cuối của bot: viết lại, sửa tin cuối của mình, đánh giá, sao chép."""
+    idx = len(S.sess.history) - 1
+    if S.editing:
+        new = st.text_area("Sửa tin nhắn cuối của bạn", value=S.sess.history[-2]["content"], key=f"edit_{S.active}_{idx}")
+        c1, c2, _ = st.columns([1, 1, 2])
+        if c1.button("Gửi lại", key="edit_send", type="primary", disabled=not new.strip()):
+            back = take_back_app()
+            S.editing = False
+            S.pending = {"text": new.strip(), "mood": back["mood"] if back else None}
+            st.rerun()
+        if c2.button("Huỷ", key="edit_cancel"):
+            S.editing = False
+            st.rerun()
+        return
+    c1, c2, c3, c4, _ = st.columns([1.25, 1.4, 1, 1, 2.2])
+    if c1.button("🔄 Viết lại", key="act_regen", help="Cho mình một cách trả lời khác"):
+        back = take_back_app()
+        if back:
+            S.pending = back
+        st.rerun()
+    if c2.button("✏️ Sửa tin cuối", key="act_edit", help="Sửa tin nhắn cuối của bạn rồi gửi lại"):
+        S.editing = True
+        st.rerun()
+    with c3:
+        fb = st.feedback("thumbs", key=f"fb_{S.active}_{idx}")
+    if fb is not None:
+        S.sess.feedback[idx] = fb
+    with c4.popover("📋 Chép"):
+        st.code(S.sess.history[-1]["content"], language=None)
 
 
 # ------------------------------------------------------------------ cột trò chuyện
@@ -534,17 +727,30 @@ trong ngày. Trò chuyện càng nhiều, mình càng hiểu bạn và gợi ý 
             st.write(m["content"])
     if pending:
         handle(pending)
+    if S.sess.closed:
+        st.caption("🏁 Phiên đã kết thúc. Bạn vẫn có thể nhắn tiếp bất cứ lúc nào, phiên sẽ mở lại.")
+    if S.sess.can_regenerate():
+        render_actions()
     # Nút trả lời nhanh cho câu hỏi bot vừa hỏi (giúp người ngại gõ, và cho dữ liệu rõ ràng hơn)
-    if history and history[-1]["role"] == "assistant":
+    quick_shown = False
+    if history and history[-1]["role"] == "assistant" and not S.editing:
         dom = A.asked_domain(history[-1]["content"])
         if dom and dom not in profile_now["domains"]:
             lang = reply_language(next((m["content"] for m in reversed(history) if m["role"] == "user"), ""), history)
             options = A.DOMAINS[dom]["quick"].get(lang, A.DOMAINS[dom]["quick"]["vi"])
+            quick_shown = True
             cols = st.columns(len(options))
             for i, (label, pol) in enumerate(options):
                 if cols[i].button(label, key=f"quick_{dom}_{i}", use_container_width=True):
                     S.pending = {"text": label, "answered": (dom, pol)}
                     st.rerun()
+    if history and history[-1]["role"] == "assistant" and not quick_shown and not S.editing:
+        chips = counseling.suggestions(S.sess.stage(), S.sess.style)[:3]
+        cols = st.columns(len(chips))
+        for i, (label, text) in enumerate(chips):
+            if cols[i].button(label, key=f"chip_{i}", use_container_width=True):
+                S.pending = {"text": text}
+                st.rerun()
 
 
 with panel_slot.container():

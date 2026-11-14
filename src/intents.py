@@ -48,6 +48,15 @@ _RULES = [
         r"\b(?:ho|nguoi ta) (?:phai|nen) xin loi (?:minh|toi)\b", r"\beveryone (?:hates|is against) me\b",
         r"\bi(?:'m| am) right,? (?:aren't|am i|right)", r"\bit(?:'s| is) all (?:their|his|her) fault\b",
     ]),
+    ("accept", [
+        r"\b(?:minh|toi|em|t) (?:muon|se|xin|dinh) thu\b", r"\bthu (?:xem|nhe|vay|di|thoi)\b",
+        r"\b(?:ok|oke|duoc)[, ]+(?:minh )?(?:se )?thu\b", r"\bi(?:'ll| will| want to| would like to) (?:try|give it a go)\b",
+        r"\blet(?:'s| us) try\b",
+    ]),
+    ("tried", [
+        r"\b(?:minh|toi|em|t) (?:da|vua|moi) thu\b", r"\b(?:minh|toi|em|t) thu (?:roi|xong)\b",
+        r"\bi(?: have|'ve| just)? tried\b", r"\bi did (?:it|that|the exercise)\b",
+    ]),
     ("advice", [
         r"\b(?:minh|toi|em|t) (?:nen|phai) lam (?:gi|sao|the nao)\b", r"\blam (?:sao|the nao) de\b",
         r"\bcho (?:minh|toi) (?:loi khuyen|cach|goi y)\b", r"\bco cach nao\b", r"\bgoi y (?:cho )?(?:minh|toi)\b",

@@ -148,6 +148,16 @@ Khi chạy ứng dụng mà không có API key, nếu đã tải mô hình dịc
 - Không có khóa: phản hồi theo luật, cùng ngôn ngữ với người dùng, không lặp câu, trả lời thật thà các câu hỏi về bot, hỏi chẩn đoán, hỏi thuốc, hỏi về bí mật (`intents.py`).
 - Bài tập nhỏ có hướng dẫn (`coping.py`: thở hộp, tiếp đất 5-4-3-2-1, một việc nhỏ 10 phút, viết ra điều lo, ghi lại suy nghĩ...), nhật ký tâm trạng nhiều ngày (`diary.py`).
 
+## Cấu trúc phiên tư vấn (kiểu ChatGPT, riêng cho tư vấn tâm lý)
+- **Nhiều cuộc trò chuyện** ở thanh bên: tạo mới, chuyển qua lại, đổi tên, xoá, xuất `.md`. Tất cả chỉ nằm trong phiên trình duyệt (không ghi ra đĩa).
+- **Thao tác trên tin nhắn:** viết lại câu trả lời (bot tránh lặp câu trước), sửa tin nhắn cuối rồi gửi lại, 👍/👎, sao chép. Viết lại/sửa gỡ cả phần phân tích của lượt đó để không tính đôi.
+- **Giai đoạn phiên** (`counseling.py`): Mở đầu → Khám phá → Đặt hướng đi → Việc nhỏ → Kết thúc, hiện ở khung phải. Chỉ để định hướng bot (khi nào gợi ý một việc nhỏ, khi nào hỏi thăm việc đã chọn), **không bao giờ khoá** người dùng.
+- **Cách đồng hành** do người dùng chọn: *Chỉ lắng nghe* (không tự gợi ý bài tập), *Lắng nghe và gợi ý nhỏ* (mặc định), *Cùng tìm hướng giải quyết*. Gợi ý chủ động tối đa 3 lần mỗi cuộc, mỗi lần một việc, kèm câu hỏi "bạn có muốn thử không?".
+- **Việc nhỏ của mình:** nói "mình muốn thử" thì bài tập bot vừa gợi ý được ghi vào danh sách (cũng thêm tay được), tick khi xong; bot hỏi thăm ở lượt sau.
+- **Kết thúc phiên do người dùng bấm:** chấm lại tâm trạng, nhận lời tổng kết + việc nhỏ + xu hướng tâm trạng; chat vẫn mở, nhắn tiếp thì phiên mở lại.
+- **Ghi nhớ giữa các cuộc** (`memory.py`): chỉ nhãn tóm tắt (chủ đề, khía cạnh, bài tập), không lưu nguyên văn; bật/tắt và xoá được; mất khi đóng trang. Bot chỉ nhắc nhẹ ở đầu cuộc mới, bằng một câu khẳng định (không thêm câu hỏi).
+- Tầng an toàn luôn đứng trên mọi giai đoạn và cách đồng hành: tin có nguy cơ tự hại vẫn nhận thông điệp cố định. Chưa kiểm thử với LLM thật (cần `ANTHROPIC_API_KEY`) hay với người dùng thật.
+
 ## An toàn và quyền riêng tư
 - **Hai tầng phát hiện nguy cơ tự hại:** luật có xử lý phủ định/ẩn dụ (`safety.py`) + phân loại bằng LLM gộp trong lời gọi trích thông tin (chỉ nâng mức, không bao giờ hạ). Khi có nguy cơ luôn trả thông điệp cố định (không dùng LLM), kể cả khi chưa tải mô hình.
 - Đo bằng bộ test hồi quy: `python src/evaluate_safety.py --show-errors` (luật: recall 0,978, trước đó 0,451, **trên bộ do nhóm tự viết nên lạc quan**), `--llm` để thêm lớp LLM.

@@ -91,7 +91,7 @@ def _result(stress=True, depression="minimum", emotions=()):
 
 def test_crisis_overrides_everything_even_with_llm(monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
-    monkeypatch.setattr(llm_client, "generate_reply", lambda *a: pytest.fail("LLM không được gọi khi crisis"))
+    monkeypatch.setattr(llm_client, "generate_reply", lambda *a, **kw: pytest.fail("LLM không được gọi khi crisis"))
     out = rg.generate_reply(_result(), "I want to kill myself", use_llm=True)
     assert out["source"] == "safety" and out["safety_level"] == "crisis"
 
@@ -106,7 +106,7 @@ def test_llm_failure_falls_back_to_rules(monkeypatch):
 
 def test_llm_used_when_available(monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
-    monkeypatch.setattr(llm_client, "generate_reply", lambda *a: "Xin chào từ LLM")
+    monkeypatch.setattr(llm_client, "generate_reply", lambda *a, **kw: "Xin chào từ LLM")
     out = rg.generate_reply(_result(), "I am stressed", use_llm=True)
     assert out["source"] == "llm" and out["reply"] == "Xin chào từ LLM"
 

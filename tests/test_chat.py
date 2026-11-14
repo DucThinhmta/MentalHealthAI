@@ -77,7 +77,7 @@ def test_topic_keyword_without_distress_is_not_treated_as_a_problem():
 # ---------- streaming ----------
 def test_stream_reply_uses_llm_chunks(monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
-    monkeypatch.setattr(llm_client, "stream_reply", lambda *a: iter(["Ừ, ", "mình nghe đây."]))
+    monkeypatch.setattr(llm_client, "stream_reply", lambda *a, **kw: iter(["Ừ, ", "mình nghe đây."]))
     meta, chunks = rg.stream_reply(_result(), "I am stressed")
     assert "".join(chunks) == "Ừ, mình nghe đây." and meta["source"] == "llm"
 
@@ -94,7 +94,7 @@ def test_stream_reply_falls_back_when_llm_fails_before_any_text(monkeypatch):
 
 def test_stream_reply_crisis_never_calls_llm(monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
-    monkeypatch.setattr(llm_client, "stream_reply", lambda *a: pytest.fail("LLM không được gọi khi crisis"))
+    monkeypatch.setattr(llm_client, "stream_reply", lambda *a, **kw: pytest.fail("LLM không được gọi khi crisis"))
     meta, chunks = rg.stream_reply(_result(), "Tôi muốn chết")
     assert "115" in "".join(chunks) and meta == {"source": "safety", "safety_level": "crisis"}
 
@@ -170,7 +170,7 @@ def test_pipeline_uses_llm_extraction_for_translation_and_domains(fake_analyze, 
                                                                    "domains": {"energy": "concern"}})
     seen = {}
 
-    def fake_stream(info, text, hist, ask):
+    def fake_stream(info, text, hist, ask, **kw):
         seen.update(info=info, ask=ask)
         return iter([f"echo:{text}"])
     monkeypatch.setattr(llm_client, "stream_reply", fake_stream)

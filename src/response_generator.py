@@ -9,6 +9,7 @@ import re
 import assessment
 import config
 import coping
+import counseling
 import intents
 import llm_client
 import safety
@@ -107,7 +108,10 @@ _T = {
                          "Chuyện bắt đầu từ đâu vậy?"],
         },
         "presence": ["Mình ở đây, bạn cứ kể từ từ nhé.",
-                     "Không cần vội đâu, bạn muốn nói tới đâu thì nói tới đó."],
+                     "Không cần vội đâu, bạn muốn nói tới đâu thì nói tới đó.",
+                     "Mình ở đây và đang nghe bạn.",
+                     "Bạn cứ nói tiếp nếu muốn, hoặc im lặng một chút cũng không sao.",
+                     "Cảm ơn bạn đã tin tưởng kể với mình."],
         "positive": ["Nghe vui ghê! Có chuyện gì hay vậy, kể mình nghe với.",
                      "Thích thật, mấy lúc như này đáng để tận hưởng lắm. Điều gì làm hôm nay của bạn dễ chịu vậy?",
                      "Mừng cho bạn nha. Bạn định làm gì tiếp theo?"],
@@ -172,7 +176,10 @@ _T = {
                          "Where did it start?"],
         },
         "presence": ["I'm here, take your time.",
-                     "No rush. Say as much or as little as you want."],
+                     "No rush. Say as much or as little as you want.",
+                     "I'm here and I'm listening.",
+                     "Keep going if you like, or a quiet moment is fine too.",
+                     "Thank you for trusting me with this."],
         "positive": ["That sounds great! What happened? Tell me about it.",
                      "Love that. Moments like this are worth enjoying. What made today feel good?",
                      "Happy for you. What are you going to do next?"],
@@ -198,6 +205,22 @@ _REDIRECT = {
            "Nhưng chuyện của bạn thì mình luôn sẵn sàng nghe."],
     "en": ["But if you'd like to talk about yourself, how have you been lately?",
            "I'm always happy to listen to whatever's on your mind, though."]}
+_ACCEPT_NEW = {
+    "vi": ["Hay đó, mình đã ghi \"{name}\" vào mục Việc nhỏ của bạn ở thanh bên. Bạn định thử vào lúc nào trong ngày?",
+           "Nghe tốt đó, mình đã thêm \"{name}\" vào mục Việc nhỏ ở thanh bên. Bạn muốn làm lúc nào thì hợp nhất?"],
+    "en": ["Great, I've added \"{name}\" to your Small steps in the sidebar. When in the day could you try it?"]}
+_ACCEPT_NONE = {
+    "vi": ["Mình rất vui khi bạn muốn thử. Bạn muốn thử việc gì? Bạn có thể xem mục Bài tập ở thanh bên, hoặc nhắn \"cho mình gợi ý\" để mình chọn giúp."],
+    "en": ["I'm glad you want to try. What would you like to try? You can look at Exercises in the sidebar, or ask me for a suggestion."]}
+_TRIED = {
+    "vi": ["Cảm ơn bạn đã thử, mình ghi nhận điều đó. Sau khi làm, bạn thấy trong người thế nào?",
+           "Hay quá, bạn đã bắt tay vào làm rồi. Làm xong bạn thấy dễ chịu hơn, như cũ, hay khó chịu hơn?"],
+    "en": ["Thank you for trying it, I appreciate that. How do you feel afterwards?"]}
+_PLAN_CHECK = {"vi": "Việc nhỏ \"{name}\" của bạn thế nào rồi, bạn đã thử chưa?",
+               "en": "How is your small step \"{name}\" going, have you tried it yet?"}
+_TRY_Q = {"vi": ["Bạn có muốn thử không?", "Bạn thấy việc này hợp với mình không?"],
+          "en": ["Would you like to try it?", "Does this feel right for you?"]}
+_FIXED_INTENTS = ("diagnosis", "medication", "privacy", "roleplay", "frustrated", "validation", "accept", "tried")
 _BRIDGE = {"vi": ["Mình hỏi thêm một chút nhé:", "Cho mình hỏi thêm một điều:"],
            "en": ["If you don't mind, one more thing I'm wondering:", "One more thing I'd like to understand:"]}
 _QUESTION_END = re.compile(r"\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)\s*[.!]*$")
@@ -256,10 +279,19 @@ def _view(info, latest=None):
     return view
 
 
-def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, intent=None, llm_on=False):
+def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, intent=None, llm_on=False,
+                coach=None, avoid=""):
+    coach = coach or {}
+    stage, style = coach.get("stage"), coach.get("style", counseling.DEFAULT_STYLE)
     lang = conversation_lang(text, history)
     t = _T[lang]
-    used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant")
+    used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant") + " " + avoid
+    if intent == "accept":                            # "mình muốn thử": ghi việc nhỏ (đã làm ở pipeline) rồi hỏi khi nào làm
+        if coach.get("new_plan"):
+            return _pick(_ACCEPT_NEW[lang], used, rng).format(name=coach["plan"][-1])
+        return _pick(_ACCEPT_NONE[lang], used, rng)
+    if intent == "tried":
+        return _pick(_TRIED[lang], used, rng)
     fixed = intents.reply(intent, lang, llm_on, used) if intent else None
     if fixed:                                         # chẩn đoán/thuốc/riêng tư/đóng vai/bực bội/xin công nhận
         return fixed
@@ -289,6 +321,24 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
         key = topics[0] if topics else emotion_topic
         reflect = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
         return f"{reflect} {coping.brief(ex, lang, 2)}"
+    if style == "listen" and n_bot_turns % 3 != 2:     # chỉ muốn được nghe: bớt hỏi dồn các khía cạnh cần thu thập
+        domain_q = None
+    if stage == "acting" and coach.get("plan") and intent is None:
+        # Việc nhỏ đã chọn: hỏi thăm (tối đa một lần trong 3 lượt gần nhất để không dồn dập)
+        check = _PLAN_CHECK[lang].format(name=coach["plan"][-1])
+        recent = " ".join([m["content"] for m in (history or []) if m.get("role") == "assistant"][-3:])
+        if check not in recent:
+            key = topics[0] if topics else emotion_topic
+            lead = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"]) if troubled else _pick(_ACK[lang], used, rng)
+            return f"{lead} {check}"
+    if (stage == "planning" and style != "listen" and (troubled or topics) and intent is None
+            and not looks_like_question(text, history) and counseling.n_offers(history) < counseling.MAX_OFFERS
+            and counseling.offered_exercise(history) is None):
+        # Đã hiểu khá rõ: gợi ý MỘT việc nhỏ (không liên tiếp, tối đa vài lần), hỏi họ có muốn thử không
+        ex = coping.pick(topics, {**known, **said}, used=coping.used_in(history))
+        key = topics[0] if topics else emotion_topic
+        lead = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
+        return f"{lead} {coping.brief(ex, lang, 1)} {_pick(_TRY_Q[lang], used, rng)}"
     if not troubled:
         has_concern = "concern" in known.values()
         if looks_like_question(text, history):
@@ -312,7 +362,7 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
         topic_q = [q for q in (t["ask"].get(key) or t["ask"]["_generic"]) if q not in used]
         if _TOPIC_DOMAIN.get(key) in known:          # đã biết rồi (vd. giấc ngủ) -> hỏi sang khía cạnh còn thiếu
             topic_q = []
-        if n_bot_turns >= 3 and n_bot_turns % 4 == 3:
+        if (n_bot_turns >= 3 and n_bot_turns % 4 == 3) or (style == "listen" and n_bot_turns % 2 == 1):
             parts.append(_pick(t["presence"], used, rng))      # thỉnh thoảng chỉ ở bên cạnh, không hỏi dồn
         elif domain_q and (not topic_q or n_bot_turns % 2 == 1):
             parts.append(domain_q)                             # xen kẽ: hỏi sâu chủ đề <-> hỏi khía cạnh còn thiếu
@@ -321,8 +371,17 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
     return " ".join(parts)
 
 
-def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=None, intent=None, llm_on=False):
-    """Phản hồi không dùng LLM -> (văn bản, nguồn)."""
+def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=None, intent=None, llm_on=False,
+              coach=None, avoid=""):
+    """Phản hồi không dùng LLM -> (văn bản, nguồn). Cuộc trò chuyện mới có điều đã nhớ thì mở đầu bằng một lời nhắc nhẹ."""
+    reply, source = _fallback_core(info, user_message, history, rng, small, latest, ask_domain, intent, llm_on, coach, avoid)
+    greeting = (coach or {}).get("greeting")
+    if greeting and intent not in _FIXED_INTENTS:
+        reply = f"{greeting} {reply}"
+    return reply, source
+
+
+def _fallback_core(info, user_message, history, rng, small, latest, ask_domain, intent, llm_on, coach, avoid):
     if small is not None:
         lang = conversation_lang(user_message, history)
         reply = smalltalk.reply(small, lang=lang)
@@ -335,7 +394,7 @@ def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=N
         return reply, "smalltalk"
     if info is None:
         return smalltalk.generic_reply(user_message, rng, lang=conversation_lang(user_message, history)), "rules"
-    return _rule_based(info, user_message, rng, history, latest, ask_domain, intent, llm_on), "rules"
+    return _rule_based(info, user_message, rng, history, latest, ask_domain, intent, llm_on, coach, avoid), "rules"
 
 
 def _safety_level(user_message, info, history, risk_hint=None):
@@ -359,19 +418,19 @@ def _safety_level(user_message, info, history, risk_hint=None):
 
 
 def generate_reply(info, user_message, history=None, use_llm=True, rng=random, small=None,
-                   latest=None, ask_domain=None, risk_hint=None, minor=False, intent=None):
+                   latest=None, ask_domain=None, risk_hint=None, minor=False, intent=None, coach=None, avoid=""):
     """Trả về dict: {'reply', 'source' ('safety'|'llm'|'rules'|'smalltalk'), 'safety_level'}.
 
     info: đánh giá cả cuộc trò chuyện (assessment.build_profile) hoặc kết quả một câu kiểu cũ; None = không phân tích.
     """
     meta, chunks = stream_reply(info, user_message, history, use_llm, rng, small, latest, ask_domain,
-                                stream=False, risk_hint=risk_hint, minor=minor, intent=intent)
+                                stream=False, risk_hint=risk_hint, minor=minor, intent=intent, coach=coach, avoid=avoid)
     reply = "".join(chunks)
     return {"reply": reply, **meta}
 
 
 def stream_reply(info, user_message, history=None, use_llm=True, rng=random, small=None,
-                 latest=None, ask_domain=None, stream=True, risk_hint=None, minor=False, intent=None):
+                 latest=None, ask_domain=None, stream=True, risk_hint=None, minor=False, intent=None, coach=None, avoid=""):
     """Trả (meta, iterator các đoạn chữ) để giao diện hiện dần. 'source' chỉ chính xác SAU KHI đọc hết iterator."""
     level = _safety_level(user_message, info, history, risk_hint)
     meta = {"source": "rules", "safety_level": "elevated" if level == "elevated_noted" else level}
@@ -385,12 +444,12 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
         if use_llm and llm_client.is_available():
             try:
                 if stream:
-                    for chunk in llm_client.stream_reply(info, user_message, history or [], ask_domain):
+                    for chunk in llm_client.stream_reply(info, user_message, history or [], ask_domain, coach=coach, avoid=avoid):
                         if chunk:
                             got_text, meta["source"] = True, "llm"
                             yield chunk
                 else:
-                    reply = llm_client.generate_reply(info, user_message, history or [], ask_domain)
+                    reply = llm_client.generate_reply(info, user_message, history or [], ask_domain, coach=coach, avoid=avoid)
                     if reply:
                         got_text, meta["source"] = True, "llm"
                         yield reply
@@ -398,7 +457,7 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
                 pass
         if not got_text:
             reply, meta["source"] = _fallback(info, user_message, history, rng, small, latest, ask_domain, intent,
-                                              llm_on=use_llm and llm_client.is_available())
+                                              llm_on=use_llm and llm_client.is_available(), coach=coach, avoid=avoid)
             yield reply
         if level == "elevated":
             yield "\n\n" + safety.elevated_note(conversation_lang(user_message, history))
