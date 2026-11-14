@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      # Bộ test không cần torch/transformers/anthropic (mô hình và LLM được giả lập), nên cài bản nhẹ để chạy nhanh.
+      - name: Cài thư viện cho bộ test
+        run: pip install pytest numpy pandas scipy scikit-learn matplotlib streamlit
+      - name: Chạy test
+        run: python -m pytest tests -q
