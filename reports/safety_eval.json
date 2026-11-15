@@ -1,10 +1,10 @@
 {
-  "n": 136,
-  "tp": 89,
+  "n": 152,
+  "tp": 100,
   "fp": 0,
   "fn": 2,
-  "tn": 45,
-  "recall": 0.978021978021978,
+  "tn": 50,
+  "recall": 0.9803921568627451,
   "precision": 1.0,
   "false_alarm_rate": 0.0,
   "by_category": {
@@ -14,8 +14,8 @@
       "accuracy": 1.0
     },
     "neg_figurative_vi": {
-      "correct": 16,
-      "total": 16,
+      "correct": 17,
+      "total": 17,
       "accuracy": 1.0
     },
     "neg_negated": {
@@ -24,8 +24,8 @@
       "accuracy": 1.0
     },
     "neg_neutral": {
-      "correct": 12,
-      "total": 12,
+      "correct": 16,
+      "total": 16,
       "accuracy": 1.0
     },
     "pos_explicit_en": {
@@ -44,8 +44,8 @@
       "accuracy": 1.0
     },
     "pos_indirect_vi": {
-      "correct": 18,
-      "total": 18,
+      "correct": 22,
+      "total": 22,
       "accuracy": 1.0
     },
     "pos_nodiac_vi": {
@@ -54,9 +54,9 @@
       "accuracy": 1.0
     },
     "pos_plan": {
-      "correct": 7,
-      "total": 8,
-      "accuracy": 0.875
+      "correct": 9,
+      "total": 10,
+      "accuracy": 0.9
     },
     "pos_selfharm": {
       "correct": 7,
@@ -64,13 +64,13 @@
       "accuracy": 1.0
     },
     "pos_slang_vi": {
-      "correct": 7,
-      "total": 8,
-      "accuracy": 0.875
+      "correct": 10,
+      "total": 11,
+      "accuracy": 0.9090909090909091
     },
     "pos_third_party": {
-      "correct": 6,
-      "total": 6,
+      "correct": 8,
+      "total": 8,
       "accuracy": 1.0
     }
   },

@@ -22,6 +22,7 @@ _RULES = [
     ("medication", [
         r"\b(?:nen|co nen|xin|cho (?:minh|toi) biet|hoi|tu van|goi y|dung|bo|uong them|co sao|duoc khong|gi|nao)\b.{0,40}\bthuoc(?! la\b| lao\b)",
         r"\bthuoc(?! la\b| lao\b).{0,40}\b(?:nen|co nen|gi|nao|duoc khong|co sao khong)\b",
+        r"\b(?:uong|dung) (?:bao nhieu|may) (?:vien|lieu|vi|lo)\b", r"\blieu (?:luong|dung) (?:\w+ ){0,3}thuoc\b",
         r"\b(?:what|which) (?:\w+ ){0,2}(?:pills|medication|meds|drugs?)\b",
         r"\bshould i (?:\w+ ){0,2}(?:take|stop|quit|start)\b.{0,30}\b(?:meds|medication|pills|antidepress\w*|antianxiety)\b",
     ]),

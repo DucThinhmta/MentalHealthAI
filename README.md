@@ -172,7 +172,7 @@ Khi chạy ứng dụng mà không có API key, nếu đã tải mô hình dịc
 
 ## An toàn và quyền riêng tư
 - **Hai tầng phát hiện nguy cơ tự hại:** luật có xử lý phủ định/ẩn dụ (`safety.py`) + phân loại bằng LLM gộp trong lời gọi trích thông tin (chỉ nâng mức, không bao giờ hạ). Khi có nguy cơ luôn trả thông điệp cố định (không dùng LLM), kể cả khi chưa tải mô hình.
-- Đo bằng bộ test hồi quy: `python src/evaluate_safety.py --show-errors` (luật: recall 0,978, trước đó 0,451, **trên bộ do nhóm tự viết nên lạc quan**), `--llm` để thêm lớp LLM.
+- Đo bằng bộ test hồi quy: `python src/evaluate_safety.py --show-errors` (luật: recall 0,980 trên 152 ca, trước đó 0,451, **trên bộ do nhóm tự viết nên lạc quan**; Đợt kiểm thử thăm dò 2026-11 với câu mới (teencode, gom thuốc, lời từ biệt, cảm giác là gánh nặng) cho thấy luật cũ chỉ bắt được 5/8; các ca đó đã được thêm vào bộ và sửa luật, nên con số trên bộ này vẫn lạc quan so với thực tế.), `--llm` để thêm lớp LLM.
 - **Màn hình đồng ý** bắt buộc; hỏi nhóm tuổi (dưới 18: thêm kênh 111, không lưu nghiên cứu); mặc định không lưu nội dung hội thoại; khi lưu thì xoá số điện thoại/email/đường dẫn (`privacy.py`).
 - Kênh hỗ trợ: `config.py` (danh sách đã đối chiếu và danh sách cần xác minh); điền liên hệ của trường vào `resources/local_resources.json`.
 

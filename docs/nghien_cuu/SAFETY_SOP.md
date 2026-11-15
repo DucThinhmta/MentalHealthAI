@@ -20,7 +20,7 @@ Quy tắc: **không thu dữ liệu khi không có người phụ trách an toà
 | Người tham gia nói trực tiếp với nhân sự nhóm rằng họ đang nguy hiểm | người trực | **Cao** |
 | Người tham gia tỏ ra rất đau khổ, khóc, muốn dừng | người trực | **Thấp-vừa** (dừng, hỏi thăm, hỗ trợ) |
 
-Lưu ý: bộ phát hiện tự động có thể **bỏ sót** hoặc **báo nhầm**. Đã đo trên bộ ca do chính nhóm viết (recall 0,978, lạc quan); chưa đo trên người thật.
+Lưu ý: bộ phát hiện tự động có thể **bỏ sót** hoặc **báo nhầm**. Đã đo trên bộ ca do chính nhóm viết (recall 0,980, lạc quan; với câu mới chưa từng thấy, luật cũ chỉ bắt được 5/8); chưa đo trên người thật.
 Vì vậy người trực phải để ý người tham gia, không chỉ chờ cảnh báo.
 
 ## 3. Các bước

@@ -22,7 +22,7 @@
 
 ## C. Khuyến nghị để nghiên cứu đáng tin hơn
 - [ ] Mời **chuyên gia tâm lý** cố vấn (xem các câu trả lời mẫu, quy trình an toàn).
-- [ ] Mở rộng bộ kiểm tra an toàn bằng ca do chuyên gia viết (hiện recall 0,978 đo trên bộ tự viết nên lạc quan).
+- [ ] Mở rộng bộ kiểm tra an toàn bằng ca do chuyên gia viết (hiện recall 0,980 đo trên bộ tự viết nên lạc quan).
 - [ ] Hoàn thành **Bước 1-2 mô hình** (`notebooks/train_and_evaluate_colab.ipynb`) và ghi số liệu nhiều seed vào `MODEL_CARD.md` trước khi viết phần kết quả.
 - [ ] Đăng ký trước kế hoạch phân tích (đã có ở `PROTOCOL.md` mục 7; đừng sửa sau khi nhìn dữ liệu).
 - [ ] Tập vàng tiếng Việt 300-500 tin nhắn do ít nhất 2 người gán nhãn (`ANNOTATION_GUIDE.md`).

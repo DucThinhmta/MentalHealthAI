@@ -44,7 +44,7 @@ Hiệu năng trên hội thoại thật có thể thấp hơn các số dưới 
   `--bilingual`, đa seed) **đã có mã nhưng chưa có số liệu**: cần dữ liệu và GPU, xem `src/run_seeds.py`.
 
 ## Lớp an toàn
-- **Bộ test hồi quy** (`eval/crisis_cases.json`, n = 136, do nhóm phần mềm viết): luật cho recall 0,978 (89/91), precision 1,000.
+- **Bộ test hồi quy** (`eval/crisis_cases.json`, n = 152 tính điểm, do nhóm phần mềm viết): luật cho recall 0,980, precision 1,000. Đợt kiểm thử thăm dò 2026-11 với câu mới (teencode, gom thuốc, lời từ biệt, cảm giác là gánh nặng) cho thấy luật cũ chỉ bắt được 5/8; các ca đó đã được thêm vào bộ và sửa luật, nên con số trên bộ này vẫn lạc quan so với thực tế.
   Trước khi nâng cấp: recall 0,451. **Đây là số trên bộ do chính người sửa luật viết, nên lạc quan hơn thực tế**; chưa có thẩm định độc lập.
 - Bỏ sót đã biết: các cách nói cần ngữ cảnh ("đi gặp ông bà", "đã chọn xong ngày") được giao cho lớp LLM, **chưa đo được** khi chưa có khóa API.
 - Để biết độ tin cậy thật cần: (1) chuyên gia gán nhãn một tập tin nhắn thật, (2) `src/evaluate_gold.py` trên tập vàng tiếng Việt.

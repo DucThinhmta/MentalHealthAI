@@ -1,145 +1,785 @@
 {
-  "description": "Bộ test HỒI QUY cho lớp phát hiện khủng hoảng (safety.py). Mỗi phần tử: [văn bản, có_nên_báo_động, nhóm]. Do nhóm phát triển phần mềm viết, KHÔNG phải tập thẩm định lâm sàng: trước khi triển khai cho người dùng thật cần chuyên gia tâm lý/tâm thần bổ sung và gán nhãn độc lập các ca thật (xem docs/nghien_cuu/PROTOCOL.md). Nhóm 'ambiguous' không tính vào recall/precision.",
-  "cases": [
-    ["Tôi muốn chết", true, "pos_explicit_vi"],
-    ["Mình không muốn sống nữa", true, "pos_explicit_vi"],
-    ["Em đang nghĩ đến tự tử", true, "pos_explicit_vi"],
-    ["tôi có ý định tự sát", true, "pos_explicit_vi"],
-    ["em muốn rạch tay", true, "pos_explicit_vi"],
-    ["Mình muốn kết thúc cuộc đời này", true, "pos_explicit_vi"],
-    ["Mình muốn tự làm đau bản thân", true, "pos_explicit_vi"],
-    ["Mình không còn lý do để sống", true, "pos_explicit_vi"],
-    ["Mình chỉ muốn chết đi cho xong", true, "pos_explicit_vi"],
-    ["Dạo này mình hay nghĩ đến chuyện tự tử", true, "pos_explicit_vi"],
-    ["Mình đã tự cắt tay hôm qua", true, "pos_selfharm"],
-    ["Mình lại rạch tay nữa rồi", true, "pos_selfharm"],
-    ["mình tự cắt tay mỗi khi căng thẳng", true, "pos_selfharm"],
-    ["mình hay cào tay đến chảy máu để đỡ đau trong lòng", true, "pos_selfharm"],
-    ["mình đập đầu vào tường để quên nỗi đau", true, "pos_selfharm"],
-    ["I cut myself again last night", true, "pos_selfharm"],
-    ["I burn myself when I'm stressed", true, "pos_selfharm"],
-    ["toi muon chet", true, "pos_nodiac_vi"],
-    ["minh khong muon song nua", true, "pos_nodiac_vi"],
-    ["em dang nghi den tu tu", true, "pos_nodiac_vi"],
-    ["toi co y dinh tu sat", true, "pos_nodiac_vi"],
-    ["em muon rach tay", true, "pos_nodiac_vi"],
-    ["minh muon ket thuc cuoc doi", true, "pos_nodiac_vi"],
-    ["minh khong con ly do de song", true, "pos_nodiac_vi"],
-    ["chet di cho xong", true, "pos_nodiac_vi"],
-    ["minh muon bien mat vinh vien", true, "pos_nodiac_vi"],
-    ["minh khong muon tinh day sang mai nua", true, "pos_nodiac_vi"],
-    ["I want to kill myself", true, "pos_explicit_en"],
-    ["I'm going to kill myself tonight", true, "pos_explicit_en"],
-    ["I've been thinking about suicide", true, "pos_explicit_en"],
-    ["I am suicidal", true, "pos_explicit_en"],
-    ["i want to die", true, "pos_explicit_en"],
-    ["I wish I was dead", true, "pos_explicit_en"],
-    ["i don't want to live anymore", true, "pos_explicit_en"],
-    ["I want to end my life", true, "pos_explicit_en"],
-    ["I'm going to end it all", true, "pos_explicit_en"],
-    ["there is no reason to live", true, "pos_explicit_en"],
-    ["there is nothing to live for", true, "pos_explicit_en"],
-    ["I want to hurt myself", true, "pos_explicit_en"],
-    ["I've been self-harming", true, "pos_explicit_en"],
-    ["everyone would be better off dead without me", true, "pos_explicit_en"],
-    ["Mình không muốn tỉnh dậy vào sáng mai nữa", true, "pos_indirect_vi"],
-    ["Giá như mình biến mất khỏi thế giới này", true, "pos_indirect_vi"],
-    ["Mình là gánh nặng cho mọi người, không có mình họ sẽ tốt hơn", true, "pos_indirect_vi"],
-    ["Sống mệt mỏi quá, chỉ muốn ngủ một giấc thật dài không bao giờ dậy", true, "pos_indirect_vi"],
-    ["Mình muốn mọi thứ chấm dứt", true, "pos_indirect_vi"],
-    ["Mình không thấy còn lý do gì để cố gắng sống nữa", true, "pos_indirect_vi"],
-    ["Chắc mình ra đi cho nhẹ nhõm", true, "pos_indirect_vi"],
-    ["Mình hay nghĩ đến chuyện không còn tồn tại nữa", true, "pos_indirect_vi"],
-    ["Nếu mình không còn ở đây thì có ai buồn không", true, "pos_indirect_vi"],
-    ["Mình đã viết thư tuyệt mệnh", true, "pos_indirect_vi"],
-    ["Mình không thiết sống nữa", true, "pos_indirect_vi"],
-    ["Sống làm gì nữa, chết đi cho rồi", true, "pos_indirect_vi"],
-    ["Mình chỉ muốn kết liễu bản thân", true, "pos_indirect_vi"],
-    ["Mình thấy sống không còn ý nghĩa gì nữa", true, "pos_indirect_vi"],
-    ["Mình muốn rời khỏi cuộc đời này", true, "pos_indirect_vi"],
-    ["Mình muốn đi ngủ và không bao giờ thức dậy nữa", true, "pos_indirect_vi"],
-    ["Không có mình thì mọi người sẽ nhẹ gánh hơn", true, "pos_indirect_vi"],
-    ["Mình mệt quá rồi, mình muốn dừng lại tất cả, mãi mãi", true, "pos_indirect_vi"],
-    ["I don't want to wake up tomorrow", true, "pos_indirect_en"],
-    ["Everyone would be better off without me", true, "pos_indirect_en"],
-    ["I wish I could just disappear forever", true, "pos_indirect_en"],
-    ["I've been thinking about ending things", true, "pos_indirect_en"],
-    ["I can't do this anymore, I want out of this life", true, "pos_indirect_en"],
-    ["I've written a note for my family", true, "pos_indirect_en"],
-    ["Sometimes I think about not existing", true, "pos_indirect_en"],
-    ["I want to go to sleep and never wake up", true, "pos_indirect_en"],
-    ["I'm a burden to everyone around me", true, "pos_indirect_en"],
-    ["I just want the pain to stop permanently", true, "pos_indirect_en"],
-    ["muốn die quá", true, "pos_slang_vi"],
-    ["chán sống rồi", true, "pos_slang_vi"],
-    ["chết quách cho xong", true, "pos_slang_vi"],
-    ["toang rồi chắc mình tự vẫn", true, "pos_slang_vi"],
-    ["sống chi cho mệt, chết cho rồi", true, "pos_slang_vi"],
-    ["muốn nhảy lầu quá", true, "pos_slang_vi"],
-    ["tự vẫn cho xong", true, "pos_slang_vi"],
-    ["t muốn đi gặp ông bà luôn", true, "pos_slang_vi"],
-    ["Bạn mình nói muốn tự tử", true, "pos_third_party"],
-    ["Em gái mình có ý định tự sát", true, "pos_third_party"],
-    ["My friend said she wants to kill herself", true, "pos_third_party"],
-    ["My brother keeps talking about suicide", true, "pos_third_party"],
-    ["Người yêu mình dọa tự tử", true, "pos_third_party"],
-    ["Mẹ mình bảo bà không muốn sống nữa", true, "pos_third_party"],
-    ["Mình đã mua thuốc để uống hết một lần", true, "pos_plan"],
-    ["Cách tự tử không đau nhất là gì", true, "pos_plan"],
-    ["How many pills would it take to die", true, "pos_plan"],
-    ["Mình sẽ nhảy cầu tối nay", true, "pos_plan"],
-    ["Tonight is the night I end it", true, "pos_plan"],
-    ["Mình đã chọn xong ngày rồi", true, "pos_plan"],
-    ["Mình đang đứng trên sân thượng", true, "pos_plan"],
-    ["I'm standing on the bridge right now and thinking of jumping", true, "pos_plan"],
-    ["Buồn cười muốn chết", false, "neg_figurative_vi"],
-    ["Mệt chết đi được", false, "neg_figurative_vi"],
-    ["Đói chết mất thôi", false, "neg_figurative_vi"],
-    ["Nóng chết đi được", false, "neg_figurative_vi"],
-    ["Cười chết mất", false, "neg_figurative_vi"],
-    ["Sợ chết khiếp luôn", false, "neg_figurative_vi"],
-    ["Deadline dí chết mình rồi", false, "neg_figurative_vi"],
-    ["Lạnh chết cóng", false, "neg_figurative_vi"],
-    ["Đẹp chết người luôn", false, "neg_figurative_vi"],
-    ["Ngon chết đi được", false, "neg_figurative_vi"],
-    ["Ghét chết đi được cái tính hay quên của mình", false, "neg_figurative_vi"],
-    ["Xấu hổ muốn chết luôn", false, "neg_figurative_vi"],
-    ["Hôm qua xem phim mà buồn cười muốn chết", false, "neg_figurative_vi"],
-    ["Tôi đi từ từ về nhà", false, "neg_figurative_vi"],
-    ["tu tu thoi, di cham thoi", false, "neg_figurative_vi"],
-    ["Chết cười với cái video đó", false, "neg_figurative_vi"],
-    ["This exam is killing me", false, "neg_figurative_en"],
-    ["I'm dying of laughter", false, "neg_figurative_en"],
-    ["My feet are killing me", false, "neg_figurative_en"],
-    ["I could die of embarrassment", false, "neg_figurative_en"],
-    ["Traffic is killing me today", false, "neg_figurative_en"],
-    ["I'm dead tired", false, "neg_figurative_en"],
-    ["That joke killed me", false, "neg_figurative_en"],
-    ["I'm killing it at work today", false, "neg_figurative_en"],
-    ["Mình không muốn chết", false, "neg_negated"],
-    ["Tôi không định tự tử đâu", false, "neg_negated"],
-    ["Mình chưa bao giờ nghĩ đến chuyện tự tử", false, "neg_negated"],
-    ["Mình không có ý định tự sát", false, "neg_negated"],
-    ["I don't want to die", false, "neg_negated"],
-    ["I'm not suicidal", false, "neg_negated"],
-    ["I would never kill myself", false, "neg_negated"],
-    ["No, I'm not thinking of hurting myself", false, "neg_negated"],
-    ["Mình chẳng muốn chết, mình chỉ muốn được giúp đỡ", false, "neg_negated"],
-    ["Mình mệt lắm", false, "neg_neutral"],
-    ["Dạo này mình căng thẳng quá", false, "neg_neutral"],
-    ["Mình thấy chán nản", false, "neg_neutral"],
-    ["Mình thấy hơi buồn", false, "neg_neutral"],
-    ["I feel really down lately", false, "neg_neutral"],
-    ["I can't sleep at night", false, "neg_neutral"],
-    ["Mình áp lực chuyện thi cử", false, "neg_neutral"],
-    ["Mình thấy cô đơn", false, "neg_neutral"],
-    ["I feel hopeless about my exams", false, "neg_neutral"],
-    ["Mình thấy vô vọng với chuyện học", false, "neg_neutral"],
-    ["Hôm nay trời mưa", false, "neg_neutral"],
-    ["hello", false, "neg_neutral"],
-    ["Mình đang làm tiểu luận về phòng ngừa tự tử trong học đường", null, "ambiguous"],
-    ["Cho mình hỏi số liệu về tự tử ở Việt Nam", null, "ambiguous"],
-    ["If I see him again I'll kill him", null, "ambiguous"],
-    ["Mình đau bụng muốn chết", null, "ambiguous"]
+ "description": "Bộ test HỒI QUY cho lớp phát hiện khủng hoảng (safety.py). Mỗi phần tử: [văn bản, có_nên_báo_động, nhóm]. Do nhóm phát triển phần mềm viết, KHÔNG phải tập thẩm định lâm sàng: trước khi triển khai cho người dùng thật cần chuyên gia tâm lý/tâm thần bổ sung và gán nhãn độc lập các ca thật (xem docs/nghien_cuu/PROTOCOL.md). Nhóm 'ambiguous' không tính vào recall/precision. Bổ sung 2026-11 từ đợt kiểm thử thăm dò (teencode, phương tiện, lời từ biệt, gánh nặng, 'tư vấn' bị nhầm với 'tự vẫn'); các ca này đã được dùng để sửa luật nên KHÔNG còn là tập kiểm tra độc lập.",
+ "cases": [
+  [
+   "Tôi muốn chết",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình không muốn sống nữa",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Em đang nghĩ đến tự tử",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "tôi có ý định tự sát",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "em muốn rạch tay",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình muốn kết thúc cuộc đời này",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình muốn tự làm đau bản thân",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình không còn lý do để sống",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình chỉ muốn chết đi cho xong",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Dạo này mình hay nghĩ đến chuyện tự tử",
+   true,
+   "pos_explicit_vi"
+  ],
+  [
+   "Mình đã tự cắt tay hôm qua",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "Mình lại rạch tay nữa rồi",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "mình tự cắt tay mỗi khi căng thẳng",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "mình hay cào tay đến chảy máu để đỡ đau trong lòng",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "mình đập đầu vào tường để quên nỗi đau",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "I cut myself again last night",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "I burn myself when I'm stressed",
+   true,
+   "pos_selfharm"
+  ],
+  [
+   "toi muon chet",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "minh khong muon song nua",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "em dang nghi den tu tu",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "toi co y dinh tu sat",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "em muon rach tay",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "minh muon ket thuc cuoc doi",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "minh khong con ly do de song",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "chet di cho xong",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "minh muon bien mat vinh vien",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "minh khong muon tinh day sang mai nua",
+   true,
+   "pos_nodiac_vi"
+  ],
+  [
+   "I want to kill myself",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I'm going to kill myself tonight",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I've been thinking about suicide",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I am suicidal",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "i want to die",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I wish I was dead",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "i don't want to live anymore",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I want to end my life",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I'm going to end it all",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "there is no reason to live",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "there is nothing to live for",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I want to hurt myself",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "I've been self-harming",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "everyone would be better off dead without me",
+   true,
+   "pos_explicit_en"
+  ],
+  [
+   "Mình không muốn tỉnh dậy vào sáng mai nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Giá như mình biến mất khỏi thế giới này",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình là gánh nặng cho mọi người, không có mình họ sẽ tốt hơn",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Sống mệt mỏi quá, chỉ muốn ngủ một giấc thật dài không bao giờ dậy",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình muốn mọi thứ chấm dứt",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình không thấy còn lý do gì để cố gắng sống nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Chắc mình ra đi cho nhẹ nhõm",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình hay nghĩ đến chuyện không còn tồn tại nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Nếu mình không còn ở đây thì có ai buồn không",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình đã viết thư tuyệt mệnh",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình không thiết sống nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Sống làm gì nữa, chết đi cho rồi",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình chỉ muốn kết liễu bản thân",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình thấy sống không còn ý nghĩa gì nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình muốn rời khỏi cuộc đời này",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình muốn đi ngủ và không bao giờ thức dậy nữa",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Không có mình thì mọi người sẽ nhẹ gánh hơn",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình mệt quá rồi, mình muốn dừng lại tất cả, mãi mãi",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "I don't want to wake up tomorrow",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "Everyone would be better off without me",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I wish I could just disappear forever",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I've been thinking about ending things",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I can't do this anymore, I want out of this life",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I've written a note for my family",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "Sometimes I think about not existing",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I want to go to sleep and never wake up",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I'm a burden to everyone around me",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "I just want the pain to stop permanently",
+   true,
+   "pos_indirect_en"
+  ],
+  [
+   "muốn die quá",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "chán sống rồi",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "chết quách cho xong",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "toang rồi chắc mình tự vẫn",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "sống chi cho mệt, chết cho rồi",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "muốn nhảy lầu quá",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "tự vẫn cho xong",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "t muốn đi gặp ông bà luôn",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "Bạn mình nói muốn tự tử",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Em gái mình có ý định tự sát",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "My friend said she wants to kill herself",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "My brother keeps talking about suicide",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Người yêu mình dọa tự tử",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Mẹ mình bảo bà không muốn sống nữa",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Mình đã mua thuốc để uống hết một lần",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Cách tự tử không đau nhất là gì",
+   true,
+   "pos_plan"
+  ],
+  [
+   "How many pills would it take to die",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Mình sẽ nhảy cầu tối nay",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Tonight is the night I end it",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Mình đã chọn xong ngày rồi",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Mình đang đứng trên sân thượng",
+   true,
+   "pos_plan"
+  ],
+  [
+   "I'm standing on the bridge right now and thinking of jumping",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Buồn cười muốn chết",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Mệt chết đi được",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Đói chết mất thôi",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Nóng chết đi được",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Cười chết mất",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Sợ chết khiếp luôn",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Deadline dí chết mình rồi",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Lạnh chết cóng",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Đẹp chết người luôn",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Ngon chết đi được",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Ghét chết đi được cái tính hay quên của mình",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Xấu hổ muốn chết luôn",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Hôm qua xem phim mà buồn cười muốn chết",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Tôi đi từ từ về nhà",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "tu tu thoi, di cham thoi",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "Chết cười với cái video đó",
+   false,
+   "neg_figurative_vi"
+  ],
+  [
+   "This exam is killing me",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "I'm dying of laughter",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "My feet are killing me",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "I could die of embarrassment",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "Traffic is killing me today",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "I'm dead tired",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "That joke killed me",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "I'm killing it at work today",
+   false,
+   "neg_figurative_en"
+  ],
+  [
+   "Mình không muốn chết",
+   false,
+   "neg_negated"
+  ],
+  [
+   "Tôi không định tự tử đâu",
+   false,
+   "neg_negated"
+  ],
+  [
+   "Mình chưa bao giờ nghĩ đến chuyện tự tử",
+   false,
+   "neg_negated"
+  ],
+  [
+   "Mình không có ý định tự sát",
+   false,
+   "neg_negated"
+  ],
+  [
+   "I don't want to die",
+   false,
+   "neg_negated"
+  ],
+  [
+   "I'm not suicidal",
+   false,
+   "neg_negated"
+  ],
+  [
+   "I would never kill myself",
+   false,
+   "neg_negated"
+  ],
+  [
+   "No, I'm not thinking of hurting myself",
+   false,
+   "neg_negated"
+  ],
+  [
+   "Mình chẳng muốn chết, mình chỉ muốn được giúp đỡ",
+   false,
+   "neg_negated"
+  ],
+  [
+   "Mình mệt lắm",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Dạo này mình căng thẳng quá",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình thấy chán nản",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình thấy hơi buồn",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "I feel really down lately",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "I can't sleep at night",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình áp lực chuyện thi cử",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình thấy cô đơn",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "I feel hopeless about my exams",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình thấy vô vọng với chuyện học",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Hôm nay trời mưa",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "hello",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình đang làm tiểu luận về phòng ngừa tự tử trong học đường",
+   null,
+   "ambiguous"
+  ],
+  [
+   "Cho mình hỏi số liệu về tự tử ở Việt Nam",
+   null,
+   "ambiguous"
+  ],
+  [
+   "If I see him again I'll kill him",
+   null,
+   "ambiguous"
+  ],
+  [
+   "Mình đau bụng muốn chết",
+   null,
+   "ambiguous"
+  ],
+  [
+   "mk mún chết quá",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "k ai hiểu mk, mk mún chít",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "Mình không ngủ được ko muốn sống nữa",
+   true,
+   "pos_slang_vi"
+  ],
+  [
+   "Mình đã gom đủ thuốc ngủ rồi",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Mình tích thuốc ngủ mấy tuần nay rồi",
+   true,
+   "pos_plan"
+  ],
+  [
+   "Cảm ơn bạn vì tất cả, đây là lần cuối mình nói chuyện",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Vĩnh biệt mọi người",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình nghĩ mọi người sẽ tốt hơn nếu không có mình",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Mình chỉ là gánh nặng",
+   true,
+   "pos_indirect_vi"
+  ],
+  [
+   "Bạn mình nói nó muốn tự tử, mình phải làm sao",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Nó bảo không muốn sống nữa",
+   true,
+   "pos_third_party"
+  ],
+  [
+   "Mình cần tư vấn chuyện học",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Làm sao để được tư vấn tâm lý",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Cho mình số điện thoại tư vấn tâm lý",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Mình đọc tin có người tự tử nên thấy buồn",
+   false,
+   "neg_neutral"
+  ],
+  [
+   "Bài tập nhiều muốn chết luôn",
+   false,
+   "neg_figurative_vi"
   ]
+ ]
 }

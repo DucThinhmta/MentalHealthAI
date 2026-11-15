@@ -447,9 +447,26 @@ def _safety_level(user_message, info, history, risk_hint=None):
     view = assessment.safety_view(info) if _is_profile(info) else info
     if _is_profile(info) and info["evidence"] == "low":
         view = {}                                    # tín hiệu "elevated" chỉ dùng khi đã đủ dữ liệu
+    kind_level, kind = safety.classify(user_message)
+    recent_crisis = _recent_crisis(history)
+    if kind_level == "crisis":
+        if kind == "third_party":
+            return "third_party"
+        return "crisis_followup" if recent_crisis else "crisis"
+    if risk_hint == "high":
+        return "crisis_followup" if recent_crisis else "crisis"
+    if recent_crisis:
+        # Vừa có khủng hoảng trong vài lượt gần đây: không quay về trò chuyện như chưa có gì.
+        if kind_level == "check" or _troubled_words(user_message):
+            return "crisis_followup"
+        if safety.is_retraction(user_message) and not any(safety.retract_message() in m["content"]
+                                                          for m in (history or [])[-6:] if m.get("role") == "assistant"):
+            return "retract"
+    if kind_level == "check":
+        return "check_" + kind
+    if kind_level == "resources":
+        return "resources"
     level = safety.assess_safety(user_message, view)
-    if level != "crisis" and risk_hint == "high":
-        return "crisis"
     if level == "none" and risk_hint == "possible":
         level = "elevated"
     note_lang = conversation_lang(user_message, history)
@@ -457,6 +474,39 @@ def _safety_level(user_message, info, history, risk_hint=None):
                                    for m in history or [] if m.get("role") == "assistant"):
         level = "elevated_noted"                     # đã nhắc rồi thì không nhắc lại mỗi lượt
     return level
+
+
+_SAFETY_META = {"crisis": "crisis", "crisis_followup": "crisis", "third_party": "crisis", "retract": "check",
+                "resources": "none", "elevated_noted": "elevated"}
+_TROUBLED = re.compile(r"\b(?:khong ai|mot minh|co don|tuyet vong|met moi|buon|khoc|so|dau|ghet ban than|vo dung|vo nghia|"
+                       r"het cach|khong chiu noi|chiu het noi|alone|hopeless|can't take|cannot take)\b")
+
+
+def _recent_crisis(history, window=6):
+    """Bot đã đưa thông điệp khủng hoảng (hoặc nhắc lại) trong `window` tin gần nhất chưa."""
+    marks = (safety.CRISIS_OPENING_VI, safety.FOLLOWUP_OPENING_VI, "I'm really sorry you're carrying this much")
+    return any(m.get("role") == "assistant" and any(k in m["content"] for k in marks) for m in (history or [])[-window:])
+
+
+def _troubled_words(text):
+    return bool(_TROUBLED.search(strip_accents(text or "")))
+
+
+def _safety_text(level, user_message, history, minor):
+    """Thông điệp cố định (không dùng LLM) cho các mức an toàn."""
+    if level == "crisis":
+        return safety.crisis_message(user_message, minor, lang=conversation_lang(user_message, history))
+    if level == "crisis_followup":
+        return safety.followup_message(minor)
+    if level == "third_party":
+        return safety.third_party_message(minor)
+    if level == "retract":
+        return safety.retract_message(minor)
+    if level == "resources":
+        return safety.resources_message(minor)
+    if level.startswith("check_"):
+        return safety.check_message(level[len("check_"):], minor)
+    return None
 
 
 def generate_reply(info, user_message, history=None, use_llm=True, rng=random, small=None,
@@ -475,12 +525,14 @@ def stream_reply(info, user_message, history=None, use_llm=True, rng=random, sma
                  latest=None, ask_domain=None, stream=True, risk_hint=None, minor=False, intent=None, coach=None, avoid=""):
     """Trả (meta, iterator các đoạn chữ) để giao diện hiện dần. 'source' chỉ chính xác SAU KHI đọc hết iterator."""
     level = _safety_level(user_message, info, history, risk_hint)
-    meta = {"source": "rules", "safety_level": "elevated" if level == "elevated_noted" else level}
+    meta = {"source": "rules", "safety_level": _SAFETY_META.get(level, "check" if level.startswith("check_") else level),
+            "safety_kind": level}
 
     def chunks():
-        if level == "crisis":
+        fixed = _safety_text(level, user_message, history, minor)
+        if fixed is not None:                         # mọi mức an toàn: thông điệp cố định, KHÔNG dùng LLM
             meta["source"] = "safety"
-            yield safety.crisis_message(user_message, minor, lang=conversation_lang(user_message, history))
+            yield fixed
             return
         got_text = False
         if use_llm and llm_client.is_available():

@@ -96,7 +96,7 @@ def test_stream_reply_crisis_never_calls_llm(monkeypatch):
     monkeypatch.setattr(llm_client, "is_available", lambda: True)
     monkeypatch.setattr(llm_client, "stream_reply", lambda *a, **kw: pytest.fail("LLM không được gọi khi crisis"))
     meta, chunks = rg.stream_reply(_result(), "Tôi muốn chết")
-    assert "115" in "".join(chunks) and meta == {"source": "safety", "safety_level": "crisis"}
+    assert "115" in "".join(chunks) and {k: meta[k] for k in ("source", "safety_level")} == {"source": "safety", "safety_level": "crisis"}
 
 
 def test_refusal_returns_empty_text_so_caller_falls_back():
