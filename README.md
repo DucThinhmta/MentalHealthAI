@@ -107,6 +107,13 @@ python src/find_thresholds.py && python src/calibrate.py && python src/evaluate_
 - `--base-model xlm-roberta-base` cho mô hình đa ngữ, phân tích trực tiếp tiếng Việt mà không cần bước dịch. Đây là chuyển giao chéo ngôn ngữ từ dữ liệu tiếng Anh, nên cần một tập tiếng Việt có nhãn (dù nhỏ) để đánh giá trước khi kết luận.
 - Checkpoint mới ghi `mhai_meta.json` để lúc suy luận dùng đúng tokenizer; checkpoint cũ vẫn chạy như trước.
 
+## Huấn luyện trên GPU và hồ sơ đạo đức
+- `notebooks/train_and_evaluate_colab.ipynb`: chạy từ trên xuống trên Google Colab (GPU T4): đo lại 3 mô hình, huấn luyện Depression nhiều seed (cấu hình `base` và `focal`),
+  rồi `python src/compare_depression.py` đặt BERT cạnh baseline TF-IDF theo quy tắc kết luận đặt trước (BERT vượt / baseline vượt / chưa phân biệt được).
+  Repo không chứa dữ liệu; notebook đọc từ Google Drive (xem `data/README.md` cho tên tệp).
+- `docs/nghien_cuu/`: bộ hồ sơ xin duyệt đạo đức (bản nháp, còn các mục `[ĐIỀN]`): `ETHICS_APPLICATION.md`, `PARTICIPANT_INFO_SHEET.md`, `CONSENT_FORM.md`,
+  `SAFETY_SOP.md`, `DATA_MANAGEMENT_PLAN.md`, `SUBMISSION_CHECKLIST.md` (việc phải xong trước khi thu dữ liệu), cùng `PROTOCOL.md` và `ANNOTATION_GUIDE.md`.
+
 ## Đánh giá trên cả cuộc trò chuyện
 Nhận xét không dựa vào một câu mà gom bằng chứng qua nhiều lượt (`assessment.py`):
 - điểm mô hình của TỪNG tin nhắn (stress, mức nặng nề, cảm xúc), gộp có trọng số theo độ dài; tin nhắn tiếng Việt chưa dịch không được tính điểm mô hình;
