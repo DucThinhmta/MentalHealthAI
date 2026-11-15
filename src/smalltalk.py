@@ -12,7 +12,7 @@ import config
 from textutils import strip_accents
 
 # Từ đệm hay gặp ở đầu/cuối câu ("từ từ đã, tên bạn là gì vậy?", "cho mình hỏi...", "... đi nhé").
-_OPT_PRE = (r"(?:(?:hey|hi|hello|ok|okay|so|and|please|well|but|wait|tu tu da|tu da|khoan da|the|vay|vay thi|"
+_OPT_PRE = (r"(?:(?:hey|hi|hello|ok|okay|so|and|please|well|but|wait|tu tu da|tu da|khoan da|the|vay|vay thi|u|uk|vang|da|"
             r"nhung|ma|oi|e|ui|a|uh|um|cho (?:minh|toi|em|to|tui) hoi|(?:minh|toi|em|to|tui) hoi|hoi chut|"
             r"ban oi|bot oi|mentalhealthai oi)[ ]+)*")
 _OPT_POST = (r"(?:[ ]+(?:there|bot|please|today|now|then|mentalhealthai|everyone|nhe|nha|a|ah|oi|ban|di|nao|nhi|"
@@ -37,7 +37,8 @@ _RULES = [
                             r"(?:gi)?|ban co the (?:lam|giup) (?:gi|minh gi)|ban giup gi duoc|ban hoat dong (?:the nao|ra sao)|"
                             r"ban dung de lam gi|app nay (?:la gi|de lam gi|dung de lam gi))"),
     ("thanks", "en", r"(?:thanks|thank you|thank u|thx|ty|thanks a lot|thank you so much|thanks so much|many thanks)"),
-    ("thanks", "vi", r"(?:cam on(?: ban| nhieu)?|cam on rat nhieu)"),
+    ("thanks", "vi", r"(?:cam on(?: ban| nhieu| rat nhieu)?(?: vi)?(?: da)?(?: (?:nghe|lang nghe|giup|chia se|tro chuyen|o day))?"
+                      r"(?: minh| voi minh| cung minh)?(?: nhieu| nhe| nha)?)"),
     ("bye", "en", r"(?:bye|bye bye|goodbye|see you|see you later|see ya|good night|take care|gotta go)"),
     ("bye", "vi", r"(?:tam biet|hen gap lai|chao nhe|ngu ngon|di nhe)"),
     # --- trò chuyện hằng ngày ---
@@ -51,6 +52,8 @@ _RULES = [
     ("who_made", "vi", r"(?:ai (?:tao|lam|viet|lap trinh) ra ban|ban (?:do ai|duoc ai) (?:tao|lam)(?: ra)?|"
                         r"ban la (?:bot|nguoi|ai that|robot|may|nguoi that)|"
                         r"ban co phai (?:la )?(?:nguoi(?: that)?|bot|robot|ai|may|tri tue nhan tao))"),
+    ("ask_doctor", "vi", r"(?:ban co phai (?:la )?(?:bac si|chuyen gia(?: tam ly)?|nha tam ly|nguoi tri lieu)|ban la (?:bac si|chuyen gia(?: tam ly)?|nha tam ly))"),
+    ("ask_doctor", "en", r"(?:are you (?:a )?(?:doctor|therapist|psychologist|counselor|counsellor|psychiatrist))"),
     ("sorry", "en", r"(?:sorry|i'?m sorry|my bad|excuse me|pardon)"),
     ("sorry", "vi", r"(?:xin loi|loi cua minh|sorry)"),
     ("joke", "en", r"(?:tell me a joke|say something funny|make me laugh|joke|another joke)"),
@@ -68,7 +71,7 @@ _RULES = [
 ]
 _COMPILED = [(i, lang, re.compile(rf"{_OPT_PRE}(?:{p}){_OPT_POST}")) for i, lang, p in _RULES]
 # Câu hỏi HƯỚNG VỀ BOT: được nhận ra cả khi nằm giữa câu dài ("ừ mà khoan, bạn tên là gì thế?").
-BOT_INTENTS = ("ask_name", "introduce", "capabilities", "who_made", "how_old", "what_doing")
+BOT_INTENTS = ("ask_name", "introduce", "capabilities", "who_made", "ask_doctor", "how_old", "what_doing")
 _BOT_SEARCH = [(i, lang, re.compile(rf"\b(?:{p})\b")) for i, lang, p in _RULES if i in BOT_INTENTS]
 _SPLIT = re.compile(r"[,.!?;:\n]+|\s+(?:and|va)\s+")
 
@@ -142,6 +145,7 @@ _REPLIES = {
         "good_status": "That's good to hear! If anything is on your mind, even something small, I'm happy to listen.",
         "ack": "I'm here, take your time. Tell me whatever is on your mind.",
         "bored": "Boredom happens to everyone. Want to chat about your day, or something you've been thinking about?",
+        "ask_doctor": "No, I'm not a doctor or a therapist, just a listening chatbot made for a research project. For real medical or psychological advice, please talk to a qualified professional.",
         "who_made": "I'm an AI chatbot built for a university research project on spotting signs of stress and emotions in text, so I'm not a human.",
         "sorry": "No need to apologize at all. You can say whatever you like here.",
         "joke": "Why do programmers prefer dark mode? Because light attracts bugs!",
@@ -171,6 +175,7 @@ _REPLIES = {
         "good_status": "Nghe vậy mình vui lắm! Nếu có điều gì trong đầu, dù nhỏ thôi, bạn cứ kể mình nghe nhé.",
         "ack": "Mình vẫn ở đây, bạn cứ thong thả. Điều gì đang trong đầu bạn thì kể mình nghe nhé.",
         "bored": "Ai cũng có lúc chán mà. Bạn muốn kể về một ngày của bạn, hay điều gì bạn đang nghĩ không?",
+        "ask_doctor": "Mình không phải bác sĩ hay chuyên gia tâm lý, chỉ là một chatbot lắng nghe cho đề tài nghiên cứu. Nếu bạn cần khám hay tư vấn chuyên sâu, mình khuyên bạn gặp chuyên gia thật nhé.",
         "who_made": "Mình là chatbot AI được xây dựng cho một đề tài nghiên cứu nhận diện dấu hiệu căng thẳng và cảm xúc trong văn bản, nên mình không phải người thật.",
         "sorry": "Bạn không cần xin lỗi đâu. Ở đây bạn cứ nói điều bạn muốn.",
         "joke": "Vì sao lập trình viên thích chế độ tối? Vì ánh sáng thu hút bọ (bug)!",
@@ -201,7 +206,7 @@ def reply(st: "SmallTalk", bot_name: str = None, lang: str = None) -> str:
     multi = len(st.intents) > 1
     parts = [r["greeting_short" if (i == "greeting" and multi) else i].format(bot=bot) for i in st.intents]
     ask_feelings = any(i in st.intents for i in ("greeting", "how_are_you", "ask_name", "capabilities", "introduce",
-                                                  "good_morning", "who_made", "how_old", "what_doing"))
+                                                  "good_morning", "who_made", "ask_doctor", "how_old", "what_doing"))
     if ask_feelings:
         parts.append(r["_follow_after_how"] if "how_are_you" in st.intents else r["_follow"])
     return " ".join(parts)

@@ -203,6 +203,21 @@ h1, h2, h3, h4, div[data-testid="stMarkdownContainer"] {{font-family:'Be Vietnam
            color:var(--mh-muted); background:#FAFAFD;}}
 .mh-stage.done {{background:var(--mh-ok-bg); color:var(--mh-ok); border-color:#C5E2D5;}}
 .mh-stage.current {{background:var(--mh-primary); color:#FFFFFF; border-color:var(--mh-primary); font-weight:600;}}
+.mh-mobilebar {{display:none; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap;
+               background:var(--mh-card); border:1px solid var(--mh-border); border-radius:14px; padding:.5rem .8rem;
+               margin:0 0 .7rem; font-size:{BASE - 2}px; color:var(--mh-text);}}
+.mh-mobilebar b {{font-weight:650;}}
+.st-key-actions [data-testid="stHorizontalBlock"], .st-key-chips [data-testid="stHorizontalBlock"] {{flex-wrap:wrap; gap:.4rem;}}
+.st-key-actions [data-testid="stColumn"], .st-key-chips [data-testid="stColumn"] {{flex:0 0 auto; width:auto !important; min-width:0;}}
+.st-key-actions button, .st-key-chips button {{min-height:38px; padding:.2rem .8rem; border-radius:99px;}}
+.st-key-actions button p, .st-key-chips button p {{white-space:nowrap; font-size:{BASE - 3}px;}}
+.st-key-chips button p {{white-space:normal;}}
+@media (max-width: 900px) {{
+  .st-key-livepanel {{display:none;}}
+  .mh-mobilebar {{display:flex;}}
+  .block-container {{padding-left:1rem; padding-right:1rem;}}
+  [data-testid="stChatMessage"] {{max-width:96%;}}
+}}
 .mh-curchat {{background:var(--mh-primary-soft); border-radius:12px; padding:.5rem .8rem; color:var(--mh-text);
              font-size:{BASE - 1}px; font-weight:600; margin:.2rem 0 .3rem;}}
 
@@ -512,6 +527,9 @@ def render_consent():
 
 
 if S.consent is None:
+    # Chưa đồng ý thì ẩn thanh bên (chưa có gì để dùng) cho màn hình đồng ý gọn hơn
+    st.markdown('<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] {display:none;}</style>',
+                unsafe_allow_html=True)
     render_consent()
     st.stop()
 if S.sess.minor:
@@ -538,16 +556,34 @@ def understanding_card(p):
             f' khía cạnh · {p["n_turns"]} lượt trò chuyện · độ tin cậy: <b>{CONF_VI[p["evidence"]]}</b>. {msg}</div></div>')
 
 
+def level_title(p):
+    """(tiêu đề, màu) của mức quan tâm hiện tại, ghi rõ khi còn sơ bộ; None nếu chưa có gì để đánh giá."""
+    if p["score"] is None:
+        return None
+    name, _desc, color = A.LEVELS[p["level"]]
+    if p["evidence"] == "low":
+        return "Đang theo dõi", "#6B7A8F"
+    return name + (" (sơ bộ)" if p["evidence"] == "medium" else ""), color
+
+
+def mobile_bar():
+    """Thanh trạng thái gọn trên điện thoại (khung phân tích đầy đủ chỉ hiện trên màn hình rộng)."""
+    p, cur = S.sess.profile(), S.sess.stage()
+    icon, label = next((i, l) for sid, l, i in counseling.STAGES if sid == cur)
+    lv = level_title(p)
+    state = f'<span style="color:{lv[1]}"><b>{lv[0]}</b></span> · tin cậy {CONF_VI[p["evidence"]].lower()}' if lv else "Chưa có đánh giá"
+    return (f'<div class="mh-mobilebar"><span>{icon} <b>{label}</b></span><span>{state}</span>'
+            f'<span class="mh-small" style="margin:0;width:100%">Xem chi tiết: mở menu ☰ → Xem tổng kết.</span></div>')
+
+
 def live_card(p):
     """Mức quan tâm hiện tại: hiện ngay từ tin nhắn đầu, ghi rõ độ tin cậy; chưa đủ dữ liệu thì chỉ nói 'đang theo dõi'."""
     if p["score"] is None:
         return ('<div class="mh-card"><h4>Mức quan tâm hiện tại</h4><div class="mh-small" style="margin:0">'
                 'Chưa có gì để đánh giá. Chỉ số sẽ hiện ngay khi bạn gửi tin nhắn đầu tiên.</div></div>')
-    name, desc, color = A.LEVELS[p["level"]]
-    if p["evidence"] == "low":
-        title, color, note = "Đang theo dõi", "#6B7A8F", "Chỉ số sơ bộ, có thể đổi nhiều khi bạn kể thêm."
-    else:
-        title, note = (name + (" (sơ bộ)" if p["evidence"] == "medium" else "")), desc
+    _name, desc, _c = A.LEVELS[p["level"]]
+    title, color = level_title(p)
+    note = "Chỉ số sơ bộ, có thể đổi nhiều khi bạn kể thêm." if p["evidence"] == "low" else desc
     return (f'<div class="mh-card"><h4>Mức quan tâm hiện tại</h4><div class="mh-big" style="color:{color}">{title}</div>'
             f'{meter(p["score"], color)}<div class="mh-small">{note} Độ tin cậy: <b>{CONF_VI[p["evidence"]]}</b>. '
             'Cập nhật theo từng tin nhắn, không phải chẩn đoán.</div></div>')
@@ -636,7 +672,7 @@ def render_panel(p, status=None):
 
 
 chat_col, panel_col = st.columns([1.7, 1], gap="large")
-panel_slot = panel_col.empty()      # nơi vẽ lại khung phân tích trực tiếp
+panel_slot = panel_col.container(key="livepanel").empty()      # nơi vẽ lại khung phân tích trực tiếp
 
 
 def handle(item):
@@ -705,6 +741,8 @@ def render_actions():
 # ------------------------------------------------------------------ cột trò chuyện
 with chat_col:
     history = S.sess.history
+    if history:
+        st.markdown(mobile_bar(), unsafe_allow_html=True)
     if not history and not pending:
         st.markdown("""<div class="mh-welcome"><h3>Chào bạn 👋</h3>
 <p>Mình ở đây để lắng nghe, không phán xét. Bạn có thể kể bất cứ điều gì: chuyện học, giấc ngủ, chuyện buồn vui
@@ -730,7 +768,8 @@ trong ngày. Trò chuyện càng nhiều, mình càng hiểu bạn và gợi ý 
     if S.sess.closed:
         st.caption("🏁 Phiên đã kết thúc. Bạn vẫn có thể nhắn tiếp bất cứ lúc nào, phiên sẽ mở lại.")
     if S.sess.can_regenerate():
-        render_actions()
+        with st.container(key="actions"):
+            render_actions()
     # Nút trả lời nhanh cho câu hỏi bot vừa hỏi (giúp người ngại gõ, và cho dữ liệu rõ ràng hơn)
     quick_shown = False
     if history and history[-1]["role"] == "assistant" and not S.editing:
@@ -746,11 +785,12 @@ trong ngày. Trò chuyện càng nhiều, mình càng hiểu bạn và gợi ý 
                     st.rerun()
     if history and history[-1]["role"] == "assistant" and not quick_shown and not S.editing:
         chips = counseling.suggestions(S.sess.stage(), S.sess.style)[:3]
-        cols = st.columns(len(chips))
-        for i, (label, text) in enumerate(chips):
-            if cols[i].button(label, key=f"chip_{i}", use_container_width=True):
-                S.pending = {"text": text}
-                st.rerun()
+        with st.container(key="chips"):
+            cols = st.columns(len(chips))
+            for i, (label, text) in enumerate(chips):
+                if cols[i].button(label, key=f"chip_{i}"):
+                    S.pending = {"text": text}
+                    st.rerun()
 
 
 with panel_slot.container():

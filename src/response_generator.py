@@ -20,17 +20,22 @@ from textutils import detect_lang, reply_language, strip_accents, word_pattern
 _TOPIC_WORDS = {
     "study": ["exam", "exams", "study", "studying", "school", "university", "college", "assignment",
               "homework", "grade", "grades", "test", "thesis", "project", "thi", "hoc", "bai tap",
-              "diem", "luan van", "do an", "truong"],
+              "diem", "luan van", "do an", "truong", "rot mon", "ky thi", "sap thi", "on thi", "thi cu", "mon hoc",
+              "hoc ky", "bai kiem tra", "kiem tra"],
     "sleep": ["sleep", "sleeping", "insomnia", "can't sleep", "cannot sleep", "wake up", "tired",
               "mat ngu", "khong ngu duoc", "kho ngu", "thuc khuya", "met moi"],
     "work": ["work", "job", "boss", "office", "deadline", "meeting", "workload", "cong viec",
              "sep", "viec lam", "deadline"],
     "relationship": ["relationship", "boyfriend", "girlfriend", "partner", "friend", "friends", "family",
                      "parents", "breakup", "ban be", "gia dinh", "bo me", "nguoi yeu", "chia tay"],
-    "lonely": ["lonely", "alone", "isolated", "nobody", "no one", "co don", "mot minh", "khong ai"],
+    "lonely": ["lonely", "alone", "isolated", "nobody", "no one", "co don", "mot minh", "khong ai", "chang co ai",
+              "khong co ai", "khong co ban", "chua co ban"],
     "anxiety": ["worried", "worry", "anxious", "anxiety", "nervous", "scared", "afraid", "fear",
-                "overthinking", "lo lang", "lo au", "so hai", "nghi nhieu"],
-    "sad": ["sad", "unhappy", "cry", "crying", "hopeless", "down", "buon", "khoc", "that vong", "chan nan"],
+                "overthinking", "lo lang", "lo au", "so hai", "nghi nhieu", "so rot", "so that bai", "so bi", "hoang mang",
+                "bat an", "lo qua", "lo lam", "so qua", "so lam", "hoi hop", "lo lang"],
+    "sad": ["sad", "unhappy", "cry", "crying", "hopeless", "down", "buon", "khoc", "that vong", "chan nan",
+            "chia tay", "that tinh", "cai nhau", "bi bo", "chan qua", "chan lam", "chan doi", "te qua", "te lam",
+            "khong vui", "tuyet vong", "ton thuong", "nuoc mat"],
     "pressure": ["stress", "stressed", "pressure", "overwhelmed", "too much", "burden", "exhausted",
                  "ap luc", "cang thang", "qua tai", "kiet suc"],
 }
@@ -42,6 +47,25 @@ _AFFECTIVE = {"lonely", "sad", "anxiety", "pressure"}
 _EMOTION_TOPIC = {"sadness": "sad", "grief": "sad", "disappointment": "sad", "remorse": "sad",
                   "fear": "anxiety", "nervousness": "anxiety", "anger": "angry", "annoyance": "angry"}
 _HEAVY = ("moderate", "severe")
+# Dấu hiệu vui/tích cực (tiếng Việt không dấu + tiếng Anh). Có phủ định ("không vui") thì KHÔNG tính.
+_POSITIVE = word_pattern(["vui", "vui ve", "hanh phuc", "tuyet voi", "tu hao", "thanh cong", "diem cao", "may man", "nhe nguoi",
+                          "nhe long", "phan khich", "hao hung", "an mung", "dau roi", "happy", "excited", "proud", "glad",
+                          "great news", "got a good grade"])
+_NEGATED_POSITIVE = re.compile(r"\b(?:khong|chang|chua|het|hoi|dau co|not|never)\s+(?:con\s+)?(?:vui|hanh phuc|happy|glad)\b")
+# Dấu hiệu khó chịu thường đi kèm một chủ đề trung tính ("thi", "bạn bè"...) để biết khi nào nên phản chiếu như đang gặp khó.
+_NEG_CUE = word_pattern(["khong", "chua", "chang", "so", "lo", "met", "kho", "te", "nang", "buon", "chan", "ghet", "tuc", "rot",
+                         "khoc", "that bai", "kho khan", "chia tay", "cai nhau", "bi bo", "ap luc", "stress", "can't", "cannot",
+                         "worried", "scared", "failed", "fail"])
+_DECISION = re.compile(r"\b(?:co nen|nen (?:lam|nhan|noi|bo|di|ve|nghi|tiep tuc|cho|goi|xin|chia|ly)|should i)\b")
+_DECISION_REPLY = {
+    "vi": ["Đây là quyết định của riêng bạn nên mình không muốn khuyên bừa, nhưng mình có thể cùng bạn nghĩ. Điều gì làm bạn phân vân nhất?",
+           "Mình không thể quyết định thay bạn, nhưng mình sẵn lòng cùng bạn cân nhắc. Nếu làm vậy, bạn mong chuyện sẽ ra sao?"],
+    "en": ["That's your decision to make, so I don't want to advise you carelessly, but I can think it through with you. What makes you hesitate most?"]}
+
+
+def _is_positive(text):
+    norm = strip_accents(text or "")
+    return bool(_POSITIVE.search(norm)) and not _NEGATED_POSITIVE.search(norm)
 
 
 def detect_context(text):
@@ -113,6 +137,8 @@ _T = {
                      "Bạn cứ nói tiếp nếu muốn, hoặc im lặng một chút cũng không sao.",
                      "Cảm ơn bạn đã tin tưởng kể với mình."],
         "positive": ["Nghe vui ghê! Có chuyện gì hay vậy, kể mình nghe với.",
+                     "Mừng cho bạn quá! Điều gì làm bạn thấy tự hào nhất trong chuyện này?",
+                     "Hay quá, bạn xứng đáng được vui mà. Bạn định ăn mừng hay nghỉ ngơi một chút?",
                      "Thích thật, mấy lúc như này đáng để tận hưởng lắm. Điều gì làm hôm nay của bạn dễ chịu vậy?",
                      "Mừng cho bạn nha. Bạn định làm gì tiếp theo?"],
         "neutral": ["Ừ, mình đang nghe đây. Bạn kể thêm chút nữa được không?",
@@ -224,7 +250,7 @@ _FIXED_INTENTS = ("diagnosis", "medication", "privacy", "roleplay", "frustrated"
 _BRIDGE = {"vi": ["Mình hỏi thêm một chút nhé:", "Cho mình hỏi thêm một điều:"],
            "en": ["If you don't mind, one more thing I'm wondering:", "One more thing I'd like to understand:"]}
 _QUESTION_END = re.compile(r"\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)\s*[.!]*$")
-_NOT_A_QUESTION = re.compile(r"\b(?:khong|chang|chua) (?:biet|ro|hieu|nho|chac)\b")   # "không rõ vì sao" là câu trả lời
+_NOT_A_QUESTION = re.compile(r"\b(?:khong|chang|chua) (?:biet|ro|hieu|nho|chac)\b|\b(?:khong|chang|chua)\b[a-z ]*\bgi\s*[.!]*$")   # "không rõ vì sao" là câu trả lời
 _IMPERATIVE = re.compile(r"^(?:giai|tinh|dich|viet ho|lam ho|code|lap trinh|tim giup|tra cuu|solve|translate|write me)\b")
 _QUESTION_START = re.compile(r"^(?:tai sao|vi sao|lam sao|lam the nao|the nao|co phai|ban co|why|what|how|who|where|"
                              r"when|can you|could you|do you|are you|is it)\b")
@@ -237,6 +263,8 @@ def looks_like_question(text, history=None):
     t = strip_accents(text or "").strip()
     if "?" in t or _IMPERATIVE.search(t):
         return True
+    if _DECISION.search(t):
+        return True                                    # "mình có nên nhắn lại không": luôn là câu hỏi, kể cả khi bot vừa hỏi
     if _NOT_A_QUESTION.search(t):
         return False
     last_bot = next((m["content"] for m in reversed(history or []) if m.get("role") == "assistant"), "")
@@ -314,13 +342,25 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
         topics.append(domain_topic)
     known = info.get("domains", {}) if _is_profile(info) else {}
 
+    positive = _is_positive(text) and not (stress or heavy or domain_topic is not None)
+    asked = looks_like_question(text, history)
+    norm = strip_accents(text)
+    # chủ đề trung tính (thi, bạn bè...) chỉ tính là "đang gặp khó" khi đi kèm dấu hiệu khó chịu, không phải câu hỏi/vui
+    neutral_topic_troubled = bool(topics) and not positive and not asked and bool(_NEG_CUE.search(norm))
     troubled = (stress or heavy or emotion_topic is not None or domain_topic is not None
-                or any(tp in _AFFECTIVE for tp in topics))
+                or any(tp in _AFFECTIVE for tp in topics) or neutral_topic_troubled)
+    if positive and not (stress or heavy or domain_topic is not None):
+        troubled = False
+        topics = []
+    if _DECISION.search(norm) and (intent is None):    # hỏi có nên làm gì không: không khuyên bừa, cùng cân nhắc
+        return _pick(_DECISION_REPLY[lang], used, rng)
     if intent == "advice" and (troubled or topics):    # xin lời khuyên: phản chiếu một câu + một bài tập phù hợp, không hỏi dồn
         ex = coping.pick(topics, {**known, **said}, used=coping.used_in(history))
         key = topics[0] if topics else emotion_topic
         reflect = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
         return f"{reflect} {coping.brief(ex, lang, 2)}"
+    if ask_domain == "mood" and any(tp in ("sad", "anxiety", "pressure", "lonely") for tp in topics):
+        domain_q = None                                # tâm trạng đã rõ từ điều người dùng vừa nói: không hỏi lại
     if style == "listen" and n_bot_turns % 3 != 2:     # chỉ muốn được nghe: bớt hỏi dồn các khía cạnh cần thu thập
         domain_q = None
     if stage == "acting" and coach.get("plan") and intent is None:
@@ -345,8 +385,10 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
             # Câu hỏi bot không trả lời được bằng luật: nói thật, không lờ đi rồi hỏi sang chuyện khác.
             parts.append(_pick(_UNSURE[lang], used, rng))
             parts.append(_pick(_REDIRECT[lang], used, rng))
-        elif main_emotion in config.POSITIVE_EMOTIONS:
+        elif positive or main_emotion in config.POSITIVE_EMOTIONS:
             parts.append(_pick(t["positive"], used, rng))
+        elif len(text.split()) <= 2:                           # tin rất ngắn ("ờ", "hic"): ở bên cạnh, không hỏi dồn
+            parts.append(_pick(t["presence"], used, rng))
         elif domain_q and has_concern:
             parts += [_pick(_BRIDGE[lang], used, rng), domain_q]   # chỉ hỏi tiếp khi đã có điều đáng quan tâm
         else:
