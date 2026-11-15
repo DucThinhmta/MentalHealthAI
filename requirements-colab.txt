@@ -1,0 +1,11 @@
+# Cho Google Colab: chỉ phần Colab CHƯA có sẵn (torch, pandas, numpy, matplotlib... đã cài sẵn trên Colab).
+transformers>=4.40
+huggingface_hub
+datasets
+accelerate
+scikit-learn
+scipy
+streamlit>=1.40
+sentencepiece
+sacremoses
+anthropic

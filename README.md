@@ -107,8 +107,13 @@ python src/find_thresholds.py && python src/calibrate.py && python src/evaluate_
 - `--base-model xlm-roberta-base` cho mô hình đa ngữ, phân tích trực tiếp tiếng Việt mà không cần bước dịch. Đây là chuyển giao chéo ngôn ngữ từ dữ liệu tiếng Anh, nên cần một tập tiếng Việt có nhãn (dù nhỏ) để đánh giá trước khi kết luận.
 - Checkpoint mới ghi `mhai_meta.json` để lúc suy luận dùng đúng tokenizer; checkpoint cũ vẫn chạy như trước.
 
+## Chạy trên Google Colab (không cần tải gì về máy)
+Toàn bộ dự án (ứng dụng, tải mô hình, huấn luyện GPU) chạy được trên Colab: xem **`docs/COLAB.md`**.
+- Ứng dụng: `notebooks/run_app_colab.ipynb` (Run all, mở liên kết in ra). Huấn luyện: `notebooks/train_and_evaluate_colab.ipynb` (GPU T4, tự sao lưu lên Drive, bị ngắt thì chạy tiếp).
+- `requirements-colab.txt` chỉ chứa thư viện Colab chưa có sẵn; `src/colab_helpers.py` lo đồng bộ Drive và liên kết web.
+
 ## Huấn luyện trên GPU và hồ sơ đạo đức
-- `notebooks/train_and_evaluate_colab.ipynb`: chạy từ trên xuống trên Google Colab (GPU T4): đo lại 3 mô hình, huấn luyện Depression nhiều seed (cấu hình `base` và `focal`),
+- `notebooks/train_and_evaluate_colab.ipynb`: chạy từ trên xuống trên Colab (GPU T4): đo lại 3 mô hình, huấn luyện Depression nhiều seed (cấu hình `base` và `focal`),
   rồi `python src/compare_depression.py` đặt BERT cạnh baseline TF-IDF theo quy tắc kết luận đặt trước (BERT vượt / baseline vượt / chưa phân biệt được).
   Repo không chứa dữ liệu; notebook đọc từ Google Drive (xem `data/README.md` cho tên tệp).
 - `docs/nghien_cuu/`: bộ hồ sơ xin duyệt đạo đức (bản nháp, còn các mục `[ĐIỀN]`): `ETHICS_APPLICATION.md`, `PARTICIPANT_INFO_SHEET.md`, `CONSENT_FORM.md`,

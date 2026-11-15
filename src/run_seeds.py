@@ -41,6 +41,11 @@ def build_commands(task, tag, seed, train_args, python=None):
     return train, evaluate
 
 
+def is_done(tag, seed):
+    """Seed này đã được huấn luyện và đánh giá xong chưa (có tệp kết quả)."""
+    return (config.REPORT_DIR / f"{tag}_s{seed}_results.json").exists()
+
+
 def aggregate(per_seed):
     """per_seed: danh sách dict {metric: giá trị}. Trả {metric: {mean, std, ci95, n, values}} (std với ddof=1)."""
     out = {}
@@ -98,6 +103,8 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--aggregate-only", action="store_true")
+    ap.add_argument("--skip-done", action="store_true",
+                    help="bỏ qua seed đã có reports/<tag>_s<seed>_results.json (chạy tiếp sau khi Colab bị ngắt)")
     ap.add_argument("--compare", nargs=2, metavar=("TAG_A", "TAG_B"))
     ap.add_argument("train_args", nargs=argparse.REMAINDER, help="đặt sau '--': tham số truyền cho train_classifier.py")
     a = ap.parse_args()
@@ -115,6 +122,9 @@ def main():
         raise SystemExit("Cần --tag (tên cấu hình, vd. focal)")
     if not a.aggregate_only:
         for seed in a.seeds:
+            if a.skip_done and is_done(a.tag, seed):
+                print(f"[bỏ qua] seed {seed} đã có kết quả")
+                continue
             train, evaluate = build_commands(a.task, a.tag, seed, extra)
             if a.dry_run:
                 print(" ".join(train), "\n" + " ".join(evaluate))
