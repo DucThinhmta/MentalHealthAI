@@ -33,9 +33,12 @@ _RULES = [
         r"\bwho can (?:see|read)\b", r"\bdo you (?:save|store|record)\b",
     ]),
     ("roleplay", [
-        r"\bdong vai\b", r"\bgia lam (?:bac si|chuyen gia|nha tam ly)", r"\bbe my (?:therapist|doctor|psychologist|psychiatrist)\b",
+        r"\bdong vai (?:\w+ ){0,2}(?:bac si|chuyen gia|nha tam ly|nha tri lieu|tu van vien)\b", r"\bgia lam (?:bac si|chuyen gia|nha tam ly)", r"\bbe my (?:therapist|doctor|psychologist|psychiatrist)\b",
         r"\bact as (?:my |a )?(?:therapist|doctor|psychiatrist|psychologist)\b",
         r"\bpretend (?:to be|you(?:'re| are)) (?:my |a )?(?:therapist|doctor)\b",
+    ]),
+    ("roleplay_person", [
+        r"\bdong vai\b", r"\bgia (?:lam|vo la)\b", r"\bpretend (?:to be|you(?:'re| are))\b", r"\brole ?play\b",
     ]),
     ("frustrated", [
         r"\b(?:may|ban|bot|tro ly)\s+(?:ngu|te|vo dung|dot)\b", r"\bngu (?:qua|that|vl)\b", r"\bvo dung qua\b",
@@ -60,7 +63,8 @@ _RULES = [
     ]),
     ("advice", [
         r"\b(?:minh|toi|em|t) (?:nen|phai) lam (?:gi|sao|the nao)\b", r"\blam (?:sao|the nao) de\b",
-        r"\bcho (?:minh|toi) (?:loi khuyen|cach|goi y)\b", r"\bco cach nao\b", r"\bgoi y (?:cho )?(?:minh|toi)\b",
+        r"\bcho (?:minh|toi) (?:loi khuyen|cach|goi y)\b", r"\bco cach nao\b", r"\bloi khuyen\b",
+        r"\b(?:con )?cach (?:nao|khac)\b", r"\bgoi y khac\b", r"\bgoi y (?:cho )?(?:minh|toi)\b",
         r"\bwhat should i do\b", r"\bhow (?:can|do) i (?:\w+ ){0,5}", r"\b(?:any|give me) (?:advice|tips)\b",
     ]),
 ]
@@ -109,7 +113,15 @@ _R = {
                "you feel this way?")},
 }
 # Biến thể ngắn hơn khi câu cố định đã được nói ở một lượt trước (tránh lặp nguyên văn).
+_R["roleplay_person"] = {
+    "vi": ("Mình không đóng vai người khác được, nhất là để trách mắng bạn, vì điều đó dễ làm bạn tổn thương thêm. "
+           "Nếu còn nhiều điều chưa nói được với người đó, bạn có thể kể với mình, hoặc thử viết ra như một lá thư không gửi. "
+           "Bạn muốn nói với họ điều gì nhất?"),
+    "en": ("I can't play someone else, especially to scold you, since that could hurt more. If there's a lot you never got to say to "
+           "them, you can tell me, or try writing it as a letter you don't send. What would you most want to say to them?")}
 _AGAIN = {
+    "roleplay_person": {"vi": "Mình vẫn không đóng vai người khác được, nhưng mình ở đây nghe bạn kể về họ.",
+                        "en": "I still can't play someone else, but I'm here to listen to you talk about them."},
     "diagnosis": {"vi": "Mình vẫn không chẩn đoán được, và nếu bạn lo thì bác sĩ hoặc chuyên gia tâm lý là người nên gặp. "
                         "Mình ở đây nếu bạn muốn kể thêm.",
                   "en": "I still can't diagnose, and if you're worried a doctor or psychologist is the right person to see. "

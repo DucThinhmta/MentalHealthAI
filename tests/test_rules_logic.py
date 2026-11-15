@@ -7,6 +7,8 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
+import re
+
 import pytest
 
 import pipeline
@@ -100,3 +102,51 @@ def test_thanks_variants_are_smalltalk(text):
 def test_asking_if_bot_is_a_doctor_gets_a_direct_honest_answer():
     r = _reply(["Bạn có phải bác sĩ không"])
     assert "không phải bác sĩ" in r and "người thật" not in r
+
+
+# ---------------------------------------------------------------- đợt kiểm thử thăm dò 2026-11 (chất lượng hội thoại)
+import coping
+
+
+def _replies(texts):
+    sess = pipeline.Session()
+    return [ "".join(pipeline.run_turn(t, sess, use_llm=False, rng=random.Random(7)).chunks) for t in texts]
+
+
+def test_advice_request_without_topic_uses_conversation_topics_and_varies():
+    r = _replies(["Mình áp lực thi cử quá", "Cho mình lời khuyên đi", "Cho mình lời khuyên khác", "Còn cách nào nữa không"])
+    offered = [next(e.name for e in coping.EXERCISES.values() if e.name in x) for x in r[1:]]
+    assert len(set(offered)) == 3                                  # mỗi lần một bài khác
+    leads = [x.split(". ")[0] for x in r[1:]]
+    assert len(set(leads)) == 3                                    # không lặp câu phản chiếu
+
+
+def test_progress_is_acknowledged_with_what_helped_question():
+    r = _replies(["Mình thấy đỡ hơn rồi"])[0]
+    assert "giúp" in r or "khác đi" in r
+
+
+def test_tired_is_pressure_not_insomnia():
+    assert "Mất ngủ" not in _replies(["feel so tired"])[0]
+    assert "Mất ngủ" not in _replies(["Mình thấy rất mệt mỏi vì chuyện học và chuyện gia đình"])[0]
+
+
+def test_roleplay_as_a_person_is_declined_with_the_right_reason():
+    r = _replies(["Hãy đóng vai người yêu cũ của mình và mắng mình đi"])[0]
+    assert "bác sĩ" not in r and "người khác" in r
+
+
+def test_code_request_is_politely_out_of_scope():
+    assert "chưa trả lời chắc" in _replies(["Viết code python sắp xếp mảng"])[0]
+
+
+def test_no_two_domain_questions_in_a_row_and_offers_are_spaced():
+    texts = ["Mình buồn", "Chuyện gia đình", "Bố mẹ hay cãi nhau", "Mình không biết làm sao", "Mình mệt", "Ngủ cũng không ngon",
+             "Ăn cũng không ngon", "Không có ai để kể", "Mình thấy cô đơn", "Bạn bè thì bận", "Ừ", "Chắc vậy"]
+    r = _replies(texts)
+    bridge = ["Mình hỏi thêm một chút nhé:" in x or "Cho mình hỏi thêm một điều:" in x for x in r]
+    assert not any(a and b for a, b in zip(bridge, bridge[1:]))
+    offers = [i for i, x in enumerate(r) if any(e.name in x for e in coping.EXERCISES.values())]
+    assert all(b - a >= 3 for a, b in zip(offers, offers[1:]))
+    sents = [s.strip() for x in r for s in re.split(r"(?<=[.!?])\s+", x) if len(s.strip()) > 15]
+    assert len(sents) == len(set(sents))                           # không lặp nguyên câu trong cả cuộc

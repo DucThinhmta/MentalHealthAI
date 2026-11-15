@@ -124,6 +124,15 @@ def offered_exercise(history):
     return max(found)[1] if found else None
 
 
+def turns_since_offer(history):
+    """Số lượt trả lời của bot kể từ lần gần nhất gợi ý bài tập (rất lớn nếu chưa gợi ý lần nào)."""
+    bots = [m["content"] for m in history or [] if m.get("role") == "assistant"]
+    for i, text in enumerate(reversed(bots)):
+        if any(e.name in text for e in coping.EXERCISES.values()):
+            return i
+    return 10 ** 6
+
+
 def n_offers(history):
     """Số lượt trả lời của bot đã gợi ý một bài tập trong cuộc trò chuyện này."""
     return sum(1 for m in history or [] if m.get("role") == "assistant" and any(e.name in m["content"] for e in coping.EXERCISES.values()))

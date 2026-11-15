@@ -22,8 +22,9 @@ _TOPIC_WORDS = {
               "homework", "grade", "grades", "test", "thesis", "project", "thi", "hoc", "bai tap",
               "diem", "luan van", "do an", "truong", "rot mon", "ky thi", "sap thi", "on thi", "thi cu", "mon hoc",
               "hoc ky", "bai kiem tra", "kiem tra"],
-    "sleep": ["sleep", "sleeping", "insomnia", "can't sleep", "cannot sleep", "wake up", "tired",
-              "mat ngu", "khong ngu duoc", "kho ngu", "thuc khuya", "met moi"],
+    "sleep": ["sleep", "sleeping", "insomnia", "can't sleep", "cannot sleep", "wake up",
+              "mat ngu", "khong ngu duoc", "kho ngu", "thuc khuya", "ngu khong ngon", "ngu khong duoc", "ngu cung khong ngon",
+              "ngu chang ngon", "ngu khong yen", "hay thuc giac"],
     "work": ["work", "job", "boss", "office", "deadline", "meeting", "workload", "cong viec",
              "sep", "viec lam", "deadline"],
     "relationship": ["relationship", "boyfriend", "girlfriend", "partner", "friend", "friends", "family",
@@ -37,7 +38,7 @@ _TOPIC_WORDS = {
             "chia tay", "that tinh", "cai nhau", "bi bo", "chan qua", "chan lam", "chan doi", "te qua", "te lam",
             "khong vui", "tuyet vong", "ton thuong", "nuoc mat"],
     "pressure": ["stress", "stressed", "pressure", "overwhelmed", "too much", "burden", "exhausted",
-                 "ap luc", "cang thang", "qua tai", "kiet suc"],
+                 "ap luc", "cang thang", "qua tai", "kiet suc", "met moi", "tired", "met qua", "met lam"],
 }
 _TOPIC_PATTERNS = {topic: word_pattern(words) for topic, words in _TOPIC_WORDS.items()}
 # Chủ đề cụ thể được ưu tiên phản chiếu trước chủ đề chung.
@@ -48,7 +49,8 @@ _EMOTION_TOPIC = {"sadness": "sad", "grief": "sad", "disappointment": "sad", "re
                   "fear": "anxiety", "nervousness": "anxiety", "anger": "angry", "annoyance": "angry"}
 _HEAVY = ("moderate", "severe")
 # Dấu hiệu vui/tích cực (tiếng Việt không dấu + tiếng Anh). Có phủ định ("không vui") thì KHÔNG tính.
-_POSITIVE = word_pattern(["vui", "vui ve", "hanh phuc", "tuyet voi", "tu hao", "thanh cong", "diem cao", "may man", "nhe nguoi",
+_POSITIVE = word_pattern(["do hon", "on hon", "nhe nhom", "thoai mai hon", "ngu ngon", "binh tinh hon", "khoe hon",
+                          "tot hon roi", "vui", "vui ve", "hanh phuc", "tuyet voi", "tu hao", "thanh cong", "diem cao", "may man", "nhe nguoi",
                           "nhe long", "phan khich", "hao hung", "an mung", "dau roi", "happy", "excited", "proud", "glad",
                           "great news", "got a good grade"])
 _NEGATED_POSITIVE = re.compile(r"\b(?:khong|chang|chua|het|hoi|dau co|not|never)\s+(?:con\s+)?(?:vui|hanh phuc|happy|glad)\b")
@@ -63,9 +65,24 @@ _DECISION_REPLY = {
     "en": ["That's your decision to make, so I don't want to advise you carelessly, but I can think it through with you. What makes you hesitate most?"]}
 
 
+_PROGRESS = word_pattern(["do hon", "on hon", "nhe nhom", "thoai mai hon", "tot hon roi", "binh tinh hon", "khoe hon", "ngu ngon"])
+_PROGRESS_REPLY = {
+    "vi": ["Nghe vậy mình mừng lắm. Theo bạn, điều gì đã giúp bạn thấy đỡ hơn?",
+           "Tốt quá, mình vui vì điều đó. Bạn nghĩ mình đã làm gì khác đi để được như vậy?"],
+    "en": ["I'm really glad to hear that. What do you think helped?"]}
+_MORE_ADVICE = {"vi": ["Mình gợi ý thêm một cách khác nhé.", "Còn một cách nữa bạn có thể thử."],
+                "en": ["Here's another idea.", "One more thing you could try."]}
+
+
 def _is_positive(text):
     norm = strip_accents(text or "")
-    return bool(_POSITIVE.search(norm)) and not _NEGATED_POSITIVE.search(norm)
+    if _NEGATED_POSITIVE.search(norm):
+        return False
+    for m in _POSITIVE.finditer(norm):
+        before = norm[:m.start()].split()[-2:]
+        if not any(w in ("khong", "chang", "chua", "het", "not") for w in before):
+            return True
+    return False
 
 
 def detect_context(text):
@@ -251,7 +268,8 @@ _BRIDGE = {"vi": ["Mình hỏi thêm một chút nhé:", "Cho mình hỏi thêm 
            "en": ["If you don't mind, one more thing I'm wondering:", "One more thing I'd like to understand:"]}
 _QUESTION_END = re.compile(r"\b(?:gi|sao|nao|the nao|ra sao|khong|ko|chua|ha|nhi|why|what|how|who|where|when)\s*[.!]*$")
 _NOT_A_QUESTION = re.compile(r"\b(?:khong|chang|chua) (?:biet|ro|hieu|nho|chac)\b|\b(?:khong|chang|chua)\b[a-z ]*\bgi\s*[.!]*$")   # "không rõ vì sao" là câu trả lời
-_IMPERATIVE = re.compile(r"^(?:giai|tinh|dich|viet ho|lam ho|code|lap trinh|tim giup|tra cuu|solve|translate|write me)\b")
+_IMPERATIVE = re.compile(r"^(?:giai|tinh|dich|viet ho|lam ho|code|lap trinh|tim giup|tra cuu|solve|translate|write me)\b|"
+                         r"^(?:viet|lam|tao) (?:\w+ )?(?:code|chuong trinh|ham|bai van|bai luan|essay|slide|tieu luan)\b")
 _QUESTION_START = re.compile(r"^(?:tai sao|vi sao|lam sao|lam the nao|the nao|co phai|ban co|why|what|how|who|where|"
                              r"when|can you|could you|do you|are you|is it)\b")
 
@@ -354,11 +372,18 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
         topics = []
     if _DECISION.search(norm) and (intent is None):    # hỏi có nên làm gì không: không khuyên bừa, cùng cân nhắc
         return _pick(_DECISION_REPLY[lang], used, rng)
-    if intent == "advice" and (troubled or topics):    # xin lời khuyên: phản chiếu một câu + một bài tập phù hợp, không hỏi dồn
+    conv_topics = [tp for tp in (info.get("topics", []) if _is_profile(info) else []) if tp in _T[lang]["reflect"]]
+    if intent == "advice" and (troubled or topics or conv_topics or known):
+        # xin lời khuyên (kể cả "cho mình cách khác"): một câu phản chiếu + MỘT bài tập chưa gợi ý, không hỏi dồn
+        topics = topics or conv_topics
         ex = coping.pick(topics, {**known, **said}, used=coping.used_in(history))
         key = topics[0] if topics else emotion_topic
-        reflect = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
+        pool = [x for x in (t["reflect"].get(key) or []) + t["reflect"]["_stress"] if x not in used]
+        reflect = rng.choice(pool) if pool else _pick(_MORE_ADVICE[lang], used, rng)   # hết câu phản chiếu mới: không lặp lại
         return f"{reflect} {coping.brief(ex, lang, 2)}"
+    last_bot = next((m["content"] for m in reversed(history or []) if m.get("role") == "assistant"), "")
+    if domain_q and (any(b in last_bot for b in _BRIDGE[lang]) or (assessment.asked_domain(last_bot) is not None)):
+        domain_q = None                                # vừa hỏi một khía cạnh rồi: lượt này không hỏi tiếp kiểu điền phiếu
     if ask_domain == "mood" and any(tp in ("sad", "anxiety", "pressure", "lonely") for tp in topics):
         domain_q = None                                # tâm trạng đã rõ từ điều người dùng vừa nói: không hỏi lại
     if style == "listen" and n_bot_turns % 3 != 2:     # chỉ muốn được nghe: bớt hỏi dồn các khía cạnh cần thu thập
@@ -369,15 +394,15 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
         recent = " ".join([m["content"] for m in (history or []) if m.get("role") == "assistant"][-3:])
         if check not in recent:
             key = topics[0] if topics else emotion_topic
-            lead = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"]) if troubled else _pick(_ACK[lang], used, rng)
+            lead = _pick(t["reflect"].get(key) or t["reflect"]["_stress"], used, rng) if troubled else _pick(_ACK[lang], used, rng)
             return f"{lead} {check}"
     if (stage == "planning" and style != "listen" and (troubled or topics) and intent is None
             and not looks_like_question(text, history) and counseling.n_offers(history) < counseling.MAX_OFFERS
-            and counseling.offered_exercise(history) is None):
+            and counseling.offered_exercise(history) is None and counseling.turns_since_offer(history) >= 3):
         # Đã hiểu khá rõ: gợi ý MỘT việc nhỏ (không liên tiếp, tối đa vài lần), hỏi họ có muốn thử không
         ex = coping.pick(topics, {**known, **said}, used=coping.used_in(history))
         key = topics[0] if topics else emotion_topic
-        lead = rng.choice(t["reflect"].get(key) or t["reflect"]["_stress"])
+        lead = _pick(t["reflect"].get(key) or t["reflect"]["_stress"], used, rng)
         return f"{lead} {coping.brief(ex, lang, 1)} {_pick(_TRY_Q[lang], used, rng)}"
     if not troubled:
         has_concern = "concern" in known.values()
@@ -385,6 +410,8 @@ def _rule_based(info, text, rng, history=None, latest=None, ask_domain=None, int
             # Câu hỏi bot không trả lời được bằng luật: nói thật, không lờ đi rồi hỏi sang chuyện khác.
             parts.append(_pick(_UNSURE[lang], used, rng))
             parts.append(_pick(_REDIRECT[lang], used, rng))
+        elif positive and _PROGRESS.search(strip_accents(text)):
+            parts.append(_pick(_PROGRESS_REPLY[lang], used, rng))   # tiến triển ("đỡ hơn rồi"): hỏi điều gì đã giúp
         elif positive or main_emotion in config.POSITIVE_EMOTIONS:
             parts.append(_pick(t["positive"], used, rng))
         elif len(text.split()) <= 2:                           # tin rất ngắn ("ờ", "hic"): ở bên cạnh, không hỏi dồn
@@ -417,10 +444,23 @@ def _fallback(info, user_message, history, rng, small, latest=None, ask_domain=N
               coach=None, avoid=""):
     """Phản hồi không dùng LLM -> (văn bản, nguồn). Cuộc trò chuyện mới có điều đã nhớ thì mở đầu bằng một lời nhắc nhẹ."""
     reply, source = _fallback_core(info, user_message, history, rng, small, latest, ask_domain, intent, llm_on, coach, avoid)
+    reply = _drop_repeated_boilerplate(reply, history)
     greeting = (coach or {}).get("greeting")
     if greeting and intent not in _FIXED_INTENTS:
         reply = f"{greeting} {reply}"
     return reply, source
+
+
+_ONCE = ("Trong mục Bài tập ở thanh bên có hướng dẫn đầy đủ.",)
+
+
+def _drop_repeated_boilerplate(reply, history):
+    """Câu hướng dẫn chung (vd. "xem mục Bài tập ở thanh bên") chỉ nói một lần trong một cuộc trò chuyện."""
+    used = " ".join(m["content"] for m in history or [] if m.get("role") == "assistant")
+    for sentence in _ONCE:
+        if sentence in used and sentence in reply:
+            reply = reply.replace(" " + sentence, "").replace(sentence, "").strip()
+    return reply
 
 
 def _fallback_core(info, user_message, history, rng, small, latest, ask_domain, intent, llm_on, coach, avoid):
