@@ -90,11 +90,24 @@ def persona():
     return PERSONA_PROMPT.format(bot=config.BOT_NAME, lang_rule=rule)
 
 
+def backend() -> str:
+    """'anthropic' (có khóa trả phí), 'ollama' (LLM miễn phí trên máy/Colab, xem local_llm.py) hoặc '' (không có LLM)."""
+    import local_llm
+    if local_llm.enabled():
+        return "ollama"
+    if os.getenv("ANTHROPIC_API_KEY") and importlib.util.find_spec("anthropic") is not None:
+        return "anthropic"
+    return ""
+
+
 def is_available() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY")) and importlib.util.find_spec("anthropic") is not None
+    return backend() != ""
 
 
 def _client():
+    if backend() == "ollama":
+        import local_llm
+        return local_llm.OllamaClient()
     import anthropic
     return anthropic.Anthropic()
 

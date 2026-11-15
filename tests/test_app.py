@@ -200,7 +200,11 @@ def test_consent_discloses_llm_only_when_it_is_on(monkeypatch):
     assert "Anthropic" not in _markdown(_app(consent=False))
     import llm_client
     monkeypatch.setattr(llm_client, "is_available", lambda: True)           # không phụ thuộc việc đã cài gói anthropic
+    monkeypatch.setattr(llm_client, "backend", lambda: "anthropic")
     assert "Anthropic" in _markdown(_app(consent=False))
+    monkeypatch.setattr(llm_client, "backend", lambda: "ollama")            # LLM mở chạy trên máy chủ của nhóm
+    md = _markdown(_app(consent=False))
+    assert "Anthropic" not in md and "Ollama" in md
 
 
 def test_minors_cannot_opt_into_research_and_get_the_children_hotline():

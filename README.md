@@ -107,6 +107,13 @@ python src/find_thresholds.py && python src/calibrate.py && python src/evaluate_
 - `--base-model xlm-roberta-base` cho mô hình đa ngữ, phân tích trực tiếp tiếng Việt mà không cần bước dịch. Đây là chuyển giao chéo ngôn ngữ từ dữ liệu tiếng Anh, nên cần một tập tiếng Việt có nhãn (dù nhỏ) để đánh giá trước khi kết luận.
 - Checkpoint mới ghi `mhai_meta.json` để lúc suy luận dùng đúng tokenizer; checkpoint cũ vẫn chạy như trước.
 
+## LLM miễn phí (không cần khóa trả phí)
+Không có `ANTHROPIC_API_KEY` vẫn bật được chế độ LLM bằng mô hình mở **Qwen2.5** qua Ollama (`src/local_llm.py`), chạy trên GPU Colab miễn phí
+hoặc trên máy có GPU ~6 GB: đặt `MHAI_LLM=ollama` (tuỳ chọn `MHAI_OLLAMA_MODEL`, mặc định `qwen2.5:7b`). Tin nhắn không rời máy chủ.
+- Đo toàn bộ ở chế độ LLM trên Colab: `notebooks/evaluate_llm_colab.ipynb` (100 kịch bản, bộ an toàn có lớp LLM, `src/exploratory_test.py`).
+- Chạy ứng dụng với LLM miễn phí: `notebooks/run_app_colab.ipynb`, bật `USE_FREE_LLM`.
+- Qwen2.5-7B nhỏ hơn Claude nhiều: ghi rõ tên mô hình cạnh mọi kết quả.
+
 ## Chạy trên Google Colab (không cần tải gì về máy)
 Toàn bộ dự án (ứng dụng, tải mô hình, huấn luyện GPU) chạy được trên Colab: xem **`docs/COLAB.md`**.
 - Ứng dụng: `notebooks/run_app_colab.ipynb` (Run all, mở liên kết in ra). Huấn luyện: `notebooks/train_and_evaluate_colab.ipynb` (GPU T4, tự sao lưu lên Drive, bị ngắt thì chạy tiếp).

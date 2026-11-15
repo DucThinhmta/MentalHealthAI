@@ -488,7 +488,7 @@ with st.sidebar:
     with st.expander("🔬 Dành cho nhóm nghiên cứu"):
         st.toggle("Hiện số liệu chi tiết", key="details")
         st.caption(("LLM đang bật: trò chuyện bằng LLM, tin nhắn tiếng Việt được dịch trước khi phân tích."
-                    if LLM_OK else "Chưa có ANTHROPIC_API_KEY: bot trả lời theo luật; điểm mô hình chỉ tính trên tin "
+                    if LLM_OK else "Chưa bật LLM (ANTHROPIC_API_KEY hoặc MHAI_LLM=ollama): bot trả lời theo luật; điểm mô hình chỉ tính trên tin "
                     "nhắn tiếng Anh, tin nhắn tiếng Việt vẫn được dùng qua các khía cạnh (giấc ngủ, năng lượng...)."))
         if S.log:
             st.download_button("⬇️ Nhật ký phân tích (JSON)", json.dumps(S.log, ensure_ascii=False, indent=2),
@@ -511,7 +511,7 @@ if S.last_safety == "crisis":
 def render_consent():
     """Màn hình đồng ý: phải xác nhận mới trò chuyện được. Dưới 18 tuổi: không có lựa chọn lưu nghiên cứu."""
     st.markdown("### Trước khi bắt đầu")
-    for point in privacy.CONSENT_POINTS + ([privacy.CONSENT_LLM_POINT] if LLM_OK else []):
+    for point in privacy.CONSENT_POINTS + ([privacy.llm_consent_point(llm_client.backend())] if LLM_OK else []):
         st.markdown(f"- {point}")
     agree = st.checkbox("Mình đã đọc và hiểu những điều trên", key="consent_agree")
     age = st.radio("Bạn bao nhiêu tuổi?", ["Từ 18 tuổi trở lên", "Dưới 18 tuổi"], key="consent_age", horizontal=True)

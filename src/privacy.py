@@ -28,6 +28,13 @@ CONSENT_POINTS = [
 ]
 CONSENT_LLM_POINT = ("Ứng dụng đang bật LLM: tin nhắn của bạn được gửi tới dịch vụ AI của Anthropic để tạo phản hồi và "
                      "dịch thuật.")
+CONSENT_LOCAL_LLM_POINT = ("Ứng dụng đang bật LLM mở chạy trên máy chủ của nhóm (Ollama): tin nhắn được mô hình này xử lý để tạo phản hồi "
+                           "và dịch thuật, không gửi tới dịch vụ AI bên ngoài.")
+
+
+def llm_consent_point(backend):
+    """Câu thông báo trên màn hình đồng ý theo loại LLM đang bật ('' nếu không bật)."""
+    return {"anthropic": CONSENT_LLM_POINT, "ollama": CONSENT_LOCAL_LLM_POINT}.get(backend, "")
 RESEARCH_OPTION = ("Mình đồng ý cho nhóm nghiên cứu lưu một bản **ẩn danh** của cuộc trò chuyện (đã xoá số điện thoại, "
                    "email, đường dẫn...) cùng các điểm phân tích. Không bắt buộc, và không ảnh hưởng gì nếu bạn không chọn.")
 MINOR_NOTE = ("Bạn dưới 18 tuổi: bản ghi nghiên cứu chỉ dành cho người từ 18 tuổi trở lên, nên mình sẽ không lưu gì. "

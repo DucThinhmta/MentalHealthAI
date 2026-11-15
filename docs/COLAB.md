@@ -5,13 +5,14 @@ Mọi thứ nặng (thư viện, mô hình BERT, mô hình dịch, huấn luyệ
 | Việc | Notebook | Cần GPU? |
 |---|---|---|
 | Dùng thử / trình bày ứng dụng chatbot | `notebooks/run_app_colab.ipynb` | Không bắt buộc (GPU nhanh hơn) |
+| Đo chatbot ở chế độ LLM **miễn phí** (Qwen2.5 qua Ollama) | `notebooks/evaluate_llm_colab.ipynb` | **Có (T4)** |
 | Đo lại mô hình, huấn luyện Depression/Stress nhiều seed | `notebooks/train_and_evaluate_colab.ipynb` | **Có (T4)** |
 
 Mở bằng nút "Mở trong Colab" ở đầu mỗi notebook (sau khi nhánh `main` có notebook), hoặc: Colab > File > Open notebook > GitHub > dán `DucThinhmta/MentalHealthAI`.
 
 ## Thiết lập một lần cho cả nhóm
 1. **Cất khoá bằng Colab Secrets** (biểu tượng chìa khoá bên trái, bật "Notebook access"), mỗi người tự làm trong tài khoản của mình:
-   `HF_TOKEN` (nếu mô hình trên Hugging Face ở chế độ private), `GITHUB_TOKEN` (nếu repo private), `ANTHROPIC_API_KEY` (tuỳ chọn, bật chế độ LLM).
+   `HF_TOKEN` (nếu mô hình trên Hugging Face ở chế độ private), `GITHUB_TOKEN` (nếu repo private), `ANTHROPIC_API_KEY` (tuỳ chọn, có phí). Không có khoá: bật `USE_FREE_LLM` trong notebook ứng dụng để dùng LLM miễn phí chạy trên Colab.
    Không dán khoá vào ô mã; không chia sẻ notebook đã chứa khoá.
 2. **Dữ liệu huấn luyện** (chỉ khi chạy notebook huấn luyện): một người giữ dữ liệu tạo thư mục Drive `MentalHealthAI_colab/data/`, đưa 7 tệp vào (tên tệp trong notebook và `data/README.md`),
    chia sẻ cả thư mục `MentalHealthAI_colab` cho thành viên (quyền Editor, **không** để "anyone with the link" vì các bộ dữ liệu có điều khoản riêng). Mỗi thành viên **Add shortcut to Drive** cho thư mục đó.
